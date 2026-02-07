@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -57,10 +58,15 @@ func TestProceduralTextureParse(t *testing.T) {
 }
 
 func TestPathResolver(t *testing.T) {
-	resolver := PathResolver{GameRoot: "P:\\"}
-	raw := "dz\\vehicles\\wheeled\\offroad_02\\data\\offroad_02_roof_co.paa"
+	root := "P:\\"
+	if runtime.GOOS != "windows" {
+		root = "/p"
+	}
+
+	resolver := PathResolver{GameRoot: root}
+	raw := filepath.FromSlash("dz/vehicles/wheeled/offroad_02/data/offroad_02_roof_co.paa")
 	got := resolver.ResolvePath(raw)
-	want := filepath.Clean(filepath.Join("P:\\", raw))
+	want := filepath.Clean(filepath.Join(root, raw))
 	if got != want {
 		t.Fatalf("resolve mismatch: %q != %q", got, want)
 	}
