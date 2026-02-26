@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 WoozyMasta
+// Source: github.com/woozymasta/rvmat
+
 package rvmat
 
 // valueKind represents the kind of a parsed value.

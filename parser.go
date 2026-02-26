@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 WoozyMasta
+// Source: github.com/woozymasta/rvmat
+
 package rvmat
 
 import (
@@ -6,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -281,43 +286,14 @@ func (p *parser) parseTexGenBody(name, base string) (TexGen, error) {
 
 // parseStageClass parses the body of a stage class.
 func (p *parser) parseStageClass(st *Stage) error {
-	if _, err := p.expect(tokClass); err != nil {
-		return err
-	}
-
-	// Expect identifier
-	nameTok, err := p.expect(tokIdent)
+	cn, uv, err := p.parseNestedClass()
 	if err != nil {
 		return err
 	}
 
-	// Check if base is empty
-	base := ""
-	if tok, _ := p.peek(); tok.Type == tokColon {
-		_, _ = p.next()
-		btok, err := p.expect(tokIdent)
-		if err != nil {
-			return err
-		}
-
-		base = btok.Lit
-	}
-
-	// Check if name is uvTransform and base is empty
-	if equalFold(nameTok.Lit, "uvTransform", p.opt) && base == "" {
-		uv, err := p.parseUVTransformBody()
-		if err != nil {
-			return err
-		}
-
+	if uv != nil {
 		st.UVTransform = uv
 		return nil
-	}
-
-	// Parse class body
-	cn, err := p.parseClassBody(nameTok.Lit, base)
-	if err != nil {
-		return err
 	}
 
 	st.extras = append(st.extras, cn)
@@ -326,13 +302,29 @@ func (p *parser) parseStageClass(st *Stage) error {
 
 // parseTexGenClass parses the body of a texture generator class.
 func (p *parser) parseTexGenClass(tg *TexGen) error {
-	if _, err := p.expect(tokClass); err != nil {
+	cn, uv, err := p.parseNestedClass()
+	if err != nil {
 		return err
+	}
+
+	if uv != nil {
+		tg.UVTransform = uv
+		return nil
+	}
+
+	tg.extras = append(tg.extras, cn)
+	return nil
+}
+
+// parseNestedClass parses one nested class and detects inline uvTransform blocks.
+func (p *parser) parseNestedClass() (classNode, *UVTransform, error) {
+	if _, err := p.expect(tokClass); err != nil {
+		return classNode{}, nil, err
 	}
 
 	nameTok, err := p.expect(tokIdent)
 	if err != nil {
-		return err
+		return classNode{}, nil, err
 	}
 
 	// Check if base is empty
@@ -341,7 +333,7 @@ func (p *parser) parseTexGenClass(tg *TexGen) error {
 		_, _ = p.next()
 		btok, err := p.expect(tokIdent)
 		if err != nil {
-			return err
+			return classNode{}, nil, err
 		}
 
 		base = btok.Lit
@@ -351,20 +343,18 @@ func (p *parser) parseTexGenClass(tg *TexGen) error {
 	if equalFold(nameTok.Lit, "uvTransform", p.opt) && base == "" {
 		uv, err := p.parseUVTransformBody()
 		if err != nil {
-			return err
+			return classNode{}, nil, err
 		}
 
-		tg.UVTransform = uv
-		return nil
+		return classNode{}, uv, nil
 	}
 
 	cn, err := p.parseClassBody(nameTok.Lit, base)
 	if err != nil {
-		return err
+		return classNode{}, nil, err
 	}
 
-	tg.extras = append(tg.extras, cn)
-	return nil
+	return cn, nil, nil
 }
 
 // parseStageAssign parses a stage assign.
@@ -454,8 +444,7 @@ func (p *parser) parseTexGenAssign(tg *TexGen) error {
 	}
 
 	if !isArray {
-		switch {
-		case matchKey(nameTok.Lit, "uvsource", !p.opt.DisableCaseInsensitive):
+		if matchKey(nameTok.Lit, "uvsource", !p.opt.DisableCaseInsensitive) {
 			s, err := p.parseStringValue()
 			if err != nil {
 				return err
@@ -986,13 +975,7 @@ func isBinaryRVMAT(r *bufio.Reader) bool {
 	}
 
 	// Check if binary (rapP) RVMAT
-	for _, b := range peek {
-		if b == 0x00 {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(peek, 0x00)
 }
 
 // isStageName checks if the name is a stage name.

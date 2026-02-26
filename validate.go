@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 WoozyMasta
+// Source: github.com/woozymasta/rvmat
+
 package rvmat
 
 import (
@@ -203,8 +207,8 @@ func shouldExcludePath(path string, patterns []string) bool {
 
 		// Check if the path matches a wildcard pattern
 		pp := normalizePathForMatch(p)
-		if strings.HasSuffix(pp, "*") {
-			prefix := strings.TrimSuffix(pp, "*")
+		if before, ok := strings.CutSuffix(pp, "*"); ok {
+			prefix := before
 			if strings.HasPrefix(norm, prefix) {
 				return true
 			}

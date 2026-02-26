@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 WoozyMasta
+// Source: github.com/woozymasta/rvmat
+
 package rvmat
 
 import (
@@ -22,7 +26,7 @@ type TextureRef struct {
 	Procedural *ProceduralTexture `json:"procedural,omitempty" yaml:"procedural,omitempty"` // Parsed procedural texture expression
 	Raw        string             `json:"raw,omitempty" yaml:"raw,omitempty"`               // Raw texture reference string
 	Kind       TextureKind        `json:"kind,omitempty" yaml:"kind,omitempty"`             // Texture reference type
-	ParsedOK   bool               `json:"parsedOk,omitempty" yaml:"parsedOk,omitempty"`     // Whether the texture reference was parsed successfully
+	ParsedOK   bool               `json:"parsed_ok,omitempty" yaml:"parsed_ok,omitempty"`   // Whether the texture reference was parsed successfully
 }
 
 // Validate validates this texture reference.

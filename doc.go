@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 WoozyMasta
+// Source: github.com/woozymasta/rvmat
+
 /*
 Package rvmat provides parsing, writing, and validation for Real Virtuality RVMAT
 material files.
