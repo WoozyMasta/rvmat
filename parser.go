@@ -17,13 +17,24 @@ import (
 
 // Parse parses a RVMAT from bytes.
 func Parse(data []byte, opt *ParseOptions) (*Material, error) {
-	return Decode(bytes.NewReader(data), opt)
+	popt := opt.normalize()
+	sample := data
+	if len(sample) > 4096 {
+		sample = sample[:4096]
+	}
+
+	if slices.Contains(sample, 0x00) {
+		return nil, ErrBinaryRVMAT
+	}
+
+	p := newParser(bytes.NewReader(data), popt)
+	return p.parseMaterial()
 }
 
 // Decode parses a RVMAT from reader.
 func Decode(r io.Reader, opt *ParseOptions) (*Material, error) {
 	popt := opt.normalize()
-	br := bufio.NewReader(r)
+	br := toBufferedReader(r)
 	if isBinaryRVMAT(br) {
 		return nil, ErrBinaryRVMAT
 	}

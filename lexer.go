@@ -41,13 +41,19 @@ type token struct {
 	Col  int       // Column number of the token
 }
 
+// runeReader reads runes with one-rune pushback.
+type runeReader interface {
+	ReadRune() (rune, int, error)
+	UnreadRune() error
+}
+
 // lexer represents a lexer for the RVMAT file.
 type lexer struct {
-	r   *bufio.Reader // Reader for the input
-	pos position      // Position of the current token
-	ch  rune          // Current character
-	opt ParseOptions  // Options for the lexer
-	eof bool          // End of file
+	r   runeReader   // Reader for the input
+	pos position     // Position of the current token
+	ch  rune         // Current character
+	opt ParseOptions // Options for the lexer
+	eof bool         // End of file
 }
 
 // position represents a position in the input.
@@ -58,7 +64,7 @@ type position struct {
 
 // newLexer creates a new lexer for the RVMAT file.
 func newLexer(r io.Reader, opt ParseOptions) *lexer {
-	l := &lexer{r: bufio.NewReader(r), opt: opt, pos: position{line: 1, col: 0}}
+	l := &lexer{r: toRuneReader(r), opt: opt, pos: position{line: 1, col: 0}}
 	l.read()
 	if l.ch == 0xFEFF {
 		// Skip UTF-8 BOM if present.
@@ -66,6 +72,24 @@ func newLexer(r io.Reader, opt ParseOptions) *lexer {
 	}
 
 	return l
+}
+
+// toRuneReader reuses rune-capable readers and falls back to bufio.
+func toRuneReader(r io.Reader) runeReader {
+	if rr, ok := r.(runeReader); ok {
+		return rr
+	}
+
+	return toBufferedReader(r)
+}
+
+// toBufferedReader reuses a buffered reader when available.
+func toBufferedReader(r io.Reader) *bufio.Reader {
+	if br, ok := r.(*bufio.Reader); ok {
+		return br
+	}
+
+	return bufio.NewReader(r)
 }
 
 // next returns the next token from the RVMAT file.

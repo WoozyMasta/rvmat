@@ -16,11 +16,14 @@ import (
 // Encode writes a Material to writer.
 func Encode(w io.Writer, m *Material, opt *FormatOptions) error {
 	fopt := opt.normalize()
-	// Buffered writer reduces syscall overhead and short writes.
-	bw := bufio.NewWriter(w)
+	bw, owned := toBufferedWriter(w)
 	wr := &writer{w: bw, indent: fopt.Indent}
 	if err := wr.writeMaterial(m); err != nil {
 		return err
+	}
+
+	if !owned {
+		return nil
 	}
 
 	return bw.Flush()
@@ -38,12 +41,23 @@ func EncodeFile(path string, m *Material, opt *FormatOptions) error {
 
 // Format renders a Material to bytes.
 func Format(m *Material, opt *FormatOptions) ([]byte, error) {
+	fopt := opt.normalize()
 	var buf bytes.Buffer
-	if err := Encode(&buf, m, opt); err != nil {
+	wr := &writer{w: &buf, indent: fopt.Indent}
+	if err := wr.writeMaterial(m); err != nil {
 		return nil, err
 	}
 
 	return buf.Bytes(), nil
+}
+
+// toBufferedWriter reuses a buffered writer when available.
+func toBufferedWriter(w io.Writer) (*bufio.Writer, bool) {
+	if bw, ok := w.(*bufio.Writer); ok {
+		return bw, false
+	}
+
+	return bufio.NewWriter(w), true
 }
 
 // writer writes a Material to a writer.
