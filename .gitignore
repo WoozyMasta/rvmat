@@ -189,3 +189,5 @@ $RECYCLE.BIN/
 
 *.rvmat
 !testdata/*.rvmat
+bench_*.txt
+*.pprof
