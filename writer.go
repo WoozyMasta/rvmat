@@ -10,7 +10,6 @@ import (
 	"io"
 	"os"
 	"strconv"
-	"strings"
 )
 
 // Encode writes a Material to writer.
@@ -64,7 +63,6 @@ func toBufferedWriter(w io.Writer) (*bufio.Writer, bool) {
 type writer struct {
 	w      io.Writer // Writer to write to
 	indent string    // Indentation string
-	cache  []string  // Cache of indentation strings
 	level  int       // Current nesting level
 }
 
@@ -477,12 +475,44 @@ func (w *writer) writeAssign(name string, val value, isArray bool) error {
 
 // writeIndent writes the current indentation level to the writer.
 func (w *writer) writeIndent() error {
-	if w.level <= 0 {
+	if w.level <= 0 || w.indent == "" {
 		return nil
 	}
 
-	// Cache repeated indentation strings per nesting level.
-	return w.writeString(w.indentFor(w.level))
+	for i := 0; i < w.level; i++ {
+		if err := w.writeString(w.indent); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// writeNumber writes a float64 value to the writer.
+func (w *writer) writeNumber(v float64) error {
+	var buf [32]byte
+	b := strconv.AppendFloat(buf[:0], v, 'g', -1, 64)
+	_, err := w.w.Write(b)
+
+	return err
+}
+
+// writeQuoted writes a quoted string to the writer.
+func (w *writer) writeQuoted(s string) error {
+	if err := w.writeString("\""); err != nil {
+		return err
+	}
+	if err := w.writeString(s); err != nil {
+		return err
+	}
+
+	return w.writeString("\"")
+}
+
+// writeString writes a string to the writer.
+func (w *writer) writeString(s string) error {
+	_, err := io.WriteString(w.w, s)
+	return err
 }
 
 // writeValue writes a value to the writer.
@@ -543,48 +573,4 @@ func (w *writer) writeFloatArray(vals []float64) error {
 
 	// Write float array end
 	return w.writeString("}")
-}
-
-// writeNumber writes a float64 value to the writer.
-func (w *writer) writeNumber(v float64) error {
-	var buf [32]byte
-	b := strconv.AppendFloat(buf[:0], v, 'g', -1, 64)
-	_, err := w.w.Write(b)
-
-	return err
-}
-
-// writeQuoted writes a quoted string to the writer.
-func (w *writer) writeQuoted(s string) error {
-	if err := w.writeString("\""); err != nil {
-		return err
-	}
-	if err := w.writeString(s); err != nil {
-		return err
-	}
-
-	return w.writeString("\"")
-}
-
-// writeString writes a string to the writer.
-func (w *writer) writeString(s string) error {
-	_, err := io.WriteString(w.w, s)
-	return err
-}
-
-// indentFor writes the current indentation level to the writer.
-func (w *writer) indentFor(level int) string {
-	if level <= 0 {
-		return ""
-	}
-
-	if len(w.cache) <= level {
-		w.cache = append(w.cache, make([]string, level-len(w.cache)+1)...)
-	}
-	if w.cache[level] == "" {
-		// Cache computed indentation for this level.
-		w.cache[level] = strings.Repeat(w.indent, level)
-	}
-
-	return w.cache[level]
 }
