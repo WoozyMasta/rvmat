@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"io"
 	"strconv"
-	"strings"
 	"unicode"
+	"unicode/utf8"
 )
 
 // tokenType represents a type of a token.
@@ -135,7 +135,7 @@ func (l *lexer) next() (token, error) {
 	default:
 		if isIdentStart(l.ch) {
 			lit := l.readIdent()
-			if strings.EqualFold(lit, "class") {
+			if isClassKeyword(lit) {
 				return token{Type: tokClass, Lit: lit, Line: startLine, Col: startCol}, nil
 			}
 
@@ -233,36 +233,36 @@ func (l *lexer) skipWhitespace() {
 
 // readIdent reads an identifier from the RVMAT file.
 func (l *lexer) readIdent() string {
-	var b strings.Builder
+	b := make([]byte, 0, 16)
 	for isIdentPart(l.ch) {
-		b.WriteRune(l.ch)
+		b = appendRuneByteSlice(b, l.ch)
 		l.read()
 		if l.eof {
 			break
 		}
 	}
 
-	return b.String()
+	return string(b)
 }
 
 // readNumberOrIdent reads a number or identifier from the RVMAT file.
 func (l *lexer) readNumberOrIdent() string {
-	var b strings.Builder
+	b := make([]byte, 0, 16)
 	for isWordPart(l.ch) {
-		b.WriteRune(l.ch)
+		b = appendRuneByteSlice(b, l.ch)
 		l.read()
 		if l.eof {
 			break
 		}
 	}
 
-	return b.String()
+	return string(b)
 }
 
 // readString reads a string from the RVMAT file.
 func (l *lexer) readString() (string, error) {
 	l.read() // consume opening quote
-	var b strings.Builder
+	b := make([]byte, 0, 16)
 	for {
 		if l.eof {
 			return "", l.errorf("unterminated string")
@@ -274,7 +274,7 @@ func (l *lexer) readString() (string, error) {
 				// Treat doubled quotes as an escaped quote (CSV-style).
 				l.read()
 				l.read()
-				b.WriteRune('"')
+				b = append(b, '"')
 				continue
 			}
 			l.read()
@@ -286,16 +286,16 @@ func (l *lexer) readString() (string, error) {
 			next := l.peek()
 			if next == '\\' || next == '"' {
 				l.read()
-				b.WriteRune(l.ch)
+				b = appendRuneByteSlice(b, l.ch)
 				l.read()
 				continue
 			}
 		}
-		b.WriteRune(l.ch)
+		b = appendRuneByteSlice(b, l.ch)
 		l.read()
 	}
 
-	return b.String(), nil
+	return string(b), nil
 }
 
 // errorf formats an error message and returns an error.
@@ -305,16 +305,32 @@ func (l *lexer) errorf(format string, args ...any) error {
 
 // isIdentStart checks if a character is a valid start of an identifier.
 func isIdentStart(r rune) bool {
+	if isASCII(r) {
+		return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || r == '_' || r == '$'
+	}
+
 	return unicode.IsLetter(r) || r == '_' || r == '$'
 }
 
 // isIdentPart checks if a character is a valid part of an identifier.
 func isIdentPart(r rune) bool {
+	if isASCII(r) {
+		return (r >= 'a' && r <= 'z') ||
+			(r >= 'A' && r <= 'Z') ||
+			(r >= '0' && r <= '9') ||
+			r == '_' ||
+			r == '$'
+	}
+
 	return unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_' || r == '$'
 }
 
 // isNumberStart checks if a character is a valid start of a number.
 func isNumberStart(r rune) bool {
+	if isASCII(r) {
+		return (r >= '0' && r <= '9') || r == '-'
+	}
+
 	return unicode.IsDigit(r) || r == '-'
 }
 
@@ -329,8 +345,9 @@ func isValidNumber(s string) bool {
 		return false
 	}
 
-	for _, r := range s {
-		if unicode.IsDigit(r) || r == '.' || r == '+' || r == '-' || r == 'e' || r == 'E' {
+	for i := 0; i < len(s); i++ {
+		b := s[i]
+		if (b >= '0' && b <= '9') || b == '.' || b == '+' || b == '-' || b == 'e' || b == 'E' {
 			continue
 		}
 
@@ -339,4 +356,39 @@ func isValidNumber(s string) bool {
 
 	_, err := strconv.ParseFloat(s, 64)
 	return err == nil
+}
+
+// appendRuneByteSlice appends a rune to a byte slice with an ASCII fast path.
+func appendRuneByteSlice(dst []byte, r rune) []byte {
+	if r >= 0 && r < utf8.RuneSelf {
+		return append(dst, byte(r))
+	}
+
+	var tmp [utf8.UTFMax]byte
+	n := utf8.EncodeRune(tmp[:], r)
+	return append(dst, tmp[:n]...)
+}
+
+// isClassKeyword checks whether literal is "class" in ASCII case-insensitive form.
+func isClassKeyword(s string) bool {
+	return len(s) == 5 &&
+		asciiLower(s[0]) == 'c' &&
+		asciiLower(s[1]) == 'l' &&
+		asciiLower(s[2]) == 'a' &&
+		asciiLower(s[3]) == 's' &&
+		asciiLower(s[4]) == 's'
+}
+
+// isASCII reports whether rune is within ASCII range.
+func isASCII(r rune) bool {
+	return r >= 0 && r < utf8.RuneSelf
+}
+
+// asciiLower lowercases ASCII letter bytes.
+func asciiLower(b byte) byte {
+	if b >= 'A' && b <= 'Z' {
+		return b + ('a' - 'A')
+	}
+
+	return b
 }

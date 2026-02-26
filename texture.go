@@ -204,19 +204,19 @@ func parseProcedural(raw string) (*ProceduralTexture, bool) {
 	}
 
 	// Parse width
-	w, err := strconv.Atoi(strings.TrimSpace(headParts[1]))
+	w, err := strconv.Atoi(headParts[1])
 	if err != nil {
 		return nil, false
 	}
 
 	// Parse height
-	h, err := strconv.Atoi(strings.TrimSpace(headParts[2]))
+	h, err := strconv.Atoi(headParts[2])
 	if err != nil {
 		return nil, false
 	}
 
 	// Parse mip level
-	mip, err := strconv.Atoi(strings.TrimSpace(headParts[3]))
+	mip, err := strconv.Atoi(headParts[3])
 	if err != nil {
 		return nil, false
 	}
@@ -235,7 +235,7 @@ func parseProcedural(raw string) (*ProceduralTexture, bool) {
 
 	// Initialize ProceduralTexture
 	pt := &ProceduralTexture{
-		Format: strings.TrimSpace(headParts[0]),
+		Format: headParts[0],
 		Width:  w,
 		Height: h,
 		Mip:    mip,
@@ -250,9 +250,8 @@ func parseProcedural(raw string) (*ProceduralTexture, bool) {
 // NormalizeTextureRaw attempts to clean malformed texture strings seen in the wild.
 func NormalizeTextureRaw(raw string) string {
 	s := strings.TrimSpace(raw)
-	ls := strings.ToLower(s)
-
-	if strings.HasPrefix(ls, "texture=\"") {
+	const texturePrefix = "texture=\""
+	if len(s) >= len(texturePrefix) && strings.EqualFold(s[:len(texturePrefix)], texturePrefix) {
 		s = s[len(`texture="`):]
 		s = strings.TrimSuffix(s, "\";")
 		s = strings.TrimSuffix(s, "\"")
@@ -274,23 +273,27 @@ func parseFunc(s string) (string, []string, bool) {
 	name := strings.TrimSpace(s[:open])
 	argsRaw := s[open+1 : closeIdx]
 	args := splitCSV(argsRaw)
-	for i := range args {
-		args[i] = strings.TrimSpace(args[i])
-	}
 
 	return name, args, true
 }
 
 // splitCSV splits a CSV string into a slice of strings.
 func splitCSV(s string) []string {
-	if strings.TrimSpace(s) == "" {
+	s = trimASCIISpace(s)
+	if s == "" {
 		return nil
 	}
 
-	parts := strings.Split(s, ",")
-	out := make([]string, 0, len(parts))
-	for _, p := range parts {
-		out = append(out, strings.TrimSpace(p))
+	out := make([]string, 0, strings.Count(s, ",")+1)
+	start := 0
+	for i := 0; i <= len(s); i++ {
+		if i != len(s) && s[i] != ',' {
+			continue
+		}
+
+		partStart, partEnd := trimASCIISpaceRange(s, start, i)
+		out = append(out, s[partStart:partEnd])
+		start = i + 1
 	}
 
 	return out
@@ -298,15 +301,42 @@ func splitCSV(s string) []string {
 
 // parseProceduralArgs parses the arguments of a procedural texture.
 func parseProceduralArgs(pt *ProceduralTexture) {
-	switch strings.ToLower(pt.Func) {
-	case "color":
+	switch {
+	case strings.EqualFold(pt.Func, "color"):
 		parseProceduralColor(pt)
-	case "fresnel":
+	case strings.EqualFold(pt.Func, "fresnel"):
 		parseProceduralFresnel(pt)
-	case "fresnelglass":
+	case strings.EqualFold(pt.Func, "fresnelGlass"):
 		parseProceduralFresnel(pt)
-	case "irradiance":
+	case strings.EqualFold(pt.Func, "irradiance"):
 		parseProceduralIrradiance(pt)
+	}
+}
+
+// trimASCIISpace trims ASCII whitespace from both ends.
+func trimASCIISpace(s string) string {
+	start, end := trimASCIISpaceRange(s, 0, len(s))
+	return s[start:end]
+}
+
+// trimASCIISpaceRange trims ASCII whitespace from a string range.
+func trimASCIISpaceRange(s string, start, end int) (int, int) {
+	for start < end && isASCIISpace(s[start]) {
+		start++
+	}
+	for end > start && isASCIISpace(s[end-1]) {
+		end--
+	}
+	return start, end
+}
+
+// isASCIISpace reports whether b is an ASCII whitespace byte.
+func isASCIISpace(b byte) bool {
+	switch b {
+	case ' ', '\t', '\n', '\r', '\f', '\v':
+		return true
+	default:
+		return false
 	}
 }
 

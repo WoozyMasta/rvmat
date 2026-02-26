@@ -1002,7 +1002,7 @@ func isTexGenName(name string, opt ParseOptions) bool {
 // equalFold checks if the two strings are equal.
 func equalFold(a, b string, opt ParseOptions) bool {
 	if !opt.DisableCaseInsensitive {
-		return strings.EqualFold(a, b)
+		return asciiEqualFold(a, b)
 	}
 
 	return a == b
@@ -1012,7 +1012,7 @@ func equalFold(a, b string, opt ParseOptions) bool {
 func matchKey(a, b string, ci bool) bool {
 	// ASCII-only case folding to avoid allocations.
 	if ci {
-		return strings.EqualFold(a, b)
+		return asciiEqualFold(a, b)
 	}
 	return a == b
 }
@@ -1037,12 +1037,36 @@ func hasPrefixKey(s, prefix string, ci bool) bool {
 	return true
 }
 
-// asciiLower converts a byte to lowercase.
-func asciiLower(b byte) byte {
-	if b >= 'A' && b <= 'Z' {
-		return b + 32
+// asciiEqualFold compares strings with ASCII case-insensitive matching.
+func asciiEqualFold(a, b string) bool {
+	if len(a) != len(b) {
+		return false
 	}
-	return b
+
+	for i := 0; i < len(a); i++ {
+		ab := a[i]
+		bb := b[i]
+		if ab == bb {
+			continue
+		}
+
+		if (ab|0x20) == (bb|0x20) && isASCIIAlpha(ab) {
+			continue
+		}
+
+		if !isASCII(rune(ab)) || !isASCII(rune(bb)) {
+			return strings.EqualFold(a, b)
+		}
+
+		return false
+	}
+
+	return true
+}
+
+// isASCIIAlpha reports whether b is an ASCII letter.
+func isASCIIAlpha(b byte) bool {
+	return (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z')
 }
 
 // parseNumberToken parses a number token.
