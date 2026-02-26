@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning][].
 ### Removed
 -->
 
+## [0.2.0][] - 2026-02-26
+
+### Changed
+
+* json and yaml tags are now snake_case instead of camelCase
+
+[0.2.0]: https://github.com/WoozyMasta/rvmat/compare/v0.1.1...v0.1.2
+
 ## [0.1.0][] - 2026-02-07
 
 ### Added
