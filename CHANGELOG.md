@@ -13,6 +13,13 @@ and this project adheres to [Semantic Versioning][].
 ### Removed
 -->
 
+## Unreleased
+
+### Added
+
+* TexGen inheritance resolution APIs for stage-effective UV access:
+  `ResolveStageTexGen`, `EffectiveUVSource`, `EffectiveUVTransform`
+
 ## [0.2.0][] - 2026-02-26
 
 ### Changed

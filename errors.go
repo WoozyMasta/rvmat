@@ -15,4 +15,13 @@ var (
 
 	// ErrParse indicates a parser failure.
 	ErrParse = errors.New("parse error")
+
+	// ErrTexGenNotFound indicates stage texGen reference points to unknown TexGen.
+	ErrTexGenNotFound = errors.New("texgen not found")
+
+	// ErrTexGenBaseNotFound indicates TexGen inheritance points to unknown base.
+	ErrTexGenBaseNotFound = errors.New("texgen base not found")
+
+	// ErrTexGenCycle indicates a cycle in TexGen inheritance chain.
+	ErrTexGenCycle = errors.New("texgen inheritance cycle")
 )
