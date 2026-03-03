@@ -7,6 +7,7 @@ package rvmat
 import (
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -20,6 +21,9 @@ const (
 	// TextureKindProcedural represents a procedural texture reference.
 	TextureKindProcedural TextureKind = "procedural"
 )
+
+// defaultTextureExtensions defines shared texture extension priority and allow-list.
+var defaultTextureExtensions = []string{".paa", ".pax", ".tga", ".png"}
 
 // TextureRef represents a texture reference string.
 type TextureRef struct {
@@ -186,6 +190,18 @@ func normalizeOSPath(p string) string {
 	return filepath.FromSlash(p)
 }
 
+// textureExtensionsByPriority returns shared extension priority list.
+func textureExtensionsByPriority() []string {
+	return defaultTextureExtensions
+}
+
+// hasAllowedExt checks whether path uses one of default texture extensions.
+func hasAllowedExt(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+
+	return slices.Contains(defaultTextureExtensions, ext)
+}
+
 func parseProcedural(raw string) (*ProceduralTexture, bool) {
 	// Parse minimal procedural form: "#(fmt,w,h,mip)func(args...)".
 	if !strings.HasPrefix(raw, "#(") {
@@ -260,6 +276,39 @@ func NormalizeTextureRaw(raw string) string {
 
 	s = strings.TrimSuffix(s, "\";")
 	return strings.TrimSpace(s)
+}
+
+// NormalizeGameTexturePath normalizes a texture path to game-style form.
+func NormalizeGameTexturePath(raw string) string {
+	s := NormalizeTextureRaw(raw)
+	if s == "" || strings.HasPrefix(s, "#(") {
+		return s
+	}
+
+	s = strings.ToLower(s)
+	s = strings.ReplaceAll(s, "/", `\`)
+	s = trimWindowsDrivePrefix(s)
+	s = strings.TrimLeft(s, `\`)
+	for strings.HasPrefix(s, `.\`) {
+		s = strings.TrimPrefix(s, `.\`)
+	}
+
+	return s
+}
+
+// trimWindowsDrivePrefix removes a leading drive prefix like "P:".
+func trimWindowsDrivePrefix(path string) string {
+	if len(path) < 2 || path[1] != ':' {
+		return path
+	}
+
+	first := path[0]
+	isAlpha := (first >= 'A' && first <= 'Z') || (first >= 'a' && first <= 'z')
+	if !isAlpha {
+		return path
+	}
+
+	return path[2:]
 }
 
 func parseFunc(s string) (string, []string, bool) {
@@ -418,11 +467,6 @@ func parseFloatArg(s string) (float64, bool) {
 	return f, err == nil
 }
 
-// formatFloat formats a float64 value to a string.
-func formatFloat(v float64) string {
-	return strconv.FormatFloat(v, 'g', -1, 64)
-}
-
 // formatProceduralArgs formats a slice of any type to a slice of strings.
 func formatProceduralArgs(args ...any) []string {
 	if len(args) == 0 {
@@ -435,9 +479,9 @@ func formatProceduralArgs(args ...any) []string {
 		case string:
 			out = append(out, v)
 		case float64:
-			out = append(out, formatFloat(v))
+			out = append(out, formatPrettyFloat(v))
 		case float32:
-			out = append(out, formatFloat(float64(v)))
+			out = append(out, formatPrettyFloat(float64(v)))
 		case int:
 			out = append(out, strconv.Itoa(v))
 		case int64:

@@ -3,12 +3,8 @@
 // Source: github.com/woozymasta/rvmat
 
 /*
-Package rvmat provides parsing, writing, and validation for Real Virtuality RVMAT
-material files.
-
-It focuses on fast parsing and deterministic formatting, extracting common
-fields (ambient/diffuse/specular/etc.), stages, and texgens. Procedural textures
-are supported via TextureRef and ProceduralTexture.
+Package rvmat provides parsing, writing, validation, normalization, and
+generation for Real Virtuality RVMAT material files.
 
 Reader example:
 
@@ -19,40 +15,59 @@ Reader example:
 
 Writer example:
 
-	out, err := rvmat.Format(m, nil)
+	out, err := rvmat.Format(m, &rvmat.FormatOptions{Indent: "\t"})
+	if err != nil {
+		// handle error
+	}
+	_ = out
+
+Validator example:
+
+	issues := rvmat.Validate(m, &rvmat.ValidateOptions{
+		DisableFileCheck:         true,
+		EnableShaderProfileCheck: true,
+	})
+	_ = issues
+
+TexGen effective UV example:
+
+	stage := m.Stages[0]
+	uvSource, err := rvmat.EffectiveUVSource(m, stage)
+	if err != nil {
+		// unknown texGen, broken base, or cycle
+	}
+	_ = uvSource
+
+Normalization example:
+
+	result, normalizeIssues := rvmat.Normalize(m, &rvmat.NormalizeOptions{
+		StageTextures: true,
+		StageOrder:    true,
+		TexGenOrder:   true,
+		TexturePaths:  true,
+	})
+	_ = result
+	_ = normalizeIssues
+
+High-level generator example:
+
+	gen, err := rvmat.GenerateSet(rvmat.GenerateSetOptions{
+		OutputPath:   `assets\data\testbox`,
+		BaseMaterial: rvmat.BaseMaterialSteel,
+		Finish:       rvmat.FinishGloss,
+		Condition:    rvmat.ConditionWorn,
+	})
 	if err != nil {
 		// handle error
 	}
 
-Validator example:
-
-	issues := rvmat.Validate(m, nil)
-	if len(issues) != 0 {
-		// handle validation issues
-	}
-
-Texture reader example:
-
-	tex := rvmat.ParseTextureRef(`#(argb,8,8,3)color(0.5,0.5,0.5,1.0,co)`)
-	if tex.IsProcedural() && tex.ParsedOK {
-		_ = tex.Procedural
-	}
-
-Texture writer example:
-
-	tex := rvmat.NewProceduralColor("argb", 8, 8, 3, 0.5, 0.5, 0.5, 1.0, "co")
-	_ = tex.Raw
-
-Procedural color validation example:
-
-	tex := rvmat.ParseTextureRef(`#(argb,8,8,3)color(0.5,0.5,0.5,1.0,co)`)
-	issues := tex.Validate(&rvmat.TextureValidateOptions{
-		DisableProceduralFnCheck:   false,
-		DisableProceduralArgsCheck: false,
-		DisableTextureTagCheck:     false,
+	err = rvmat.WriteGenerateSet(gen, &rvmat.FormatOptions{
+		Indent: "\t",
 	})
-	if len(issues) != 0 {
-		// handle validation issues
+	if err != nil {
+		// handle error
 	}
+
+Important format note: RVMAT key on disk is "emmisive[]". API field remains "Emissive".
 */
 package rvmat

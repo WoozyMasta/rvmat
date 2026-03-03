@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -16,7 +17,7 @@ func TestParseSamples(t *testing.T) {
 		"minimal.rvmat",
 	}
 	for _, f := range files {
-		m, err := DecodeFile(filepath.Join("testdata", f), nil)
+		m, err := DecodeFile(filepath.Join("testdata", "fixtures", f), nil)
 		if err != nil {
 			t.Fatalf("parse %s: %v", f, err)
 		}
@@ -28,8 +29,21 @@ func TestParseSamples(t *testing.T) {
 	}
 }
 
+func TestParseRejectEmissiveKey(t *testing.T) {
+	input := `emissive[] = { 0, 0, 0, 1 };`
+
+	_, err := Parse([]byte(input), nil)
+	if err == nil {
+		t.Fatalf("expected parse failure for invalid emissive key")
+	}
+
+	if !strings.Contains(strings.ToLower(err.Error()), "use \"emmisive\"") {
+		t.Fatalf("expected hint to use emmisive, got: %v", err)
+	}
+}
+
 func TestRoundTrip(t *testing.T) {
-	m, err := DecodeFile(filepath.Join("testdata", "multi.rvmat"), nil)
+	m, err := DecodeFile(filepath.Join("testdata", "fixtures", "multi.rvmat"), nil)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -82,7 +96,7 @@ func TestRoundTripMinimalMaterial(t *testing.T) {
 		Ambient:        []float64{1, 1, 1, 1},
 		Diffuse:        []float64{1, 1, 1, 1},
 		ForcedDiffuse:  []float64{0, 0, 0, 0},
-		Emmisive:       []float64{0, 0, 0, 1},
+		Emissive:       []float64{0, 0, 0, 1},
 		Specular:       []float64{0.75, 0.75, 0.75, 1},
 		Stages: []Stage{
 			{
@@ -131,7 +145,7 @@ func TestRoundTripFullMaterial(t *testing.T) {
 		Ambient:        []float64{4, 4, 4, 1},
 		Diffuse:        []float64{4, 4, 4, 1},
 		ForcedDiffuse:  []float64{0, 0, 0, 0},
-		Emmisive:       []float64{0, 0, 0, 1},
+		Emissive:       []float64{0, 0, 0, 1},
 		Specular:       []float64{0.2, 0.2, 0.2, 1},
 		SpecularPower:  floatPtr(1500),
 		TexGens: []TexGen{
@@ -145,6 +159,10 @@ func TestRoundTripFullMaterial(t *testing.T) {
 					Pos:   []float64{0, 0, 0},
 				},
 			},
+			{Name: "TexGen1", Base: "TexGen0"},
+			{Name: "TexGen2", Base: "TexGen0"},
+			{Name: "TexGen3", Base: "TexGen0"},
+			{Name: "TexGen4", Base: "TexGen0"},
 		},
 		Stages: []Stage{
 			{
@@ -232,7 +250,7 @@ func TestValidateTable(t *testing.T) {
 				Ambient:        []float64{1, 1, 1, 1},
 				Diffuse:        []float64{1, 1, 1, 1},
 				ForcedDiffuse:  []float64{0, 0, 0, 0},
-				Emmisive:       []float64{0, 0, 0, 1},
+				Emissive:       []float64{0, 0, 0, 1},
 				Specular:       []float64{0.75, 0.75, 0.75, 1},
 				Stages: []Stage{
 					{
@@ -300,7 +318,7 @@ func TestValidateTable(t *testing.T) {
 				Stages: []Stage{
 					{
 						Name:     "Stage1",
-						Texture:  ParseTextureRef(`dz\gear\cooking\data\cauldron_nohq.png`),
+						Texture:  ParseTextureRef(`dz\gear\cooking\data\cauldron_nohq.jpg`),
 						UVSource: "tex",
 						UVTransform: &UVTransform{
 							Aside: []float64{1, 0, 0},
@@ -333,6 +351,238 @@ func TestValidateTable(t *testing.T) {
 				t.Fatalf("unexpected issues: warnings=%d errors=%d issues=%v", warns, errs, issues)
 			}
 		})
+	}
+}
+
+func TestValidateTexGenResolution(t *testing.T) {
+	tests := []struct {
+		name        string
+		mat         *Material
+		wantMessage string
+		wantWarn    int
+	}{
+		{
+			name: "valid_texgen_inheritance",
+			mat: &Material{
+				PixelShaderID:  "Super",
+				VertexShaderID: "Super",
+				TexGens: []TexGen{
+					{
+						Name:     "TexGen0",
+						UVSource: "tex",
+						UVTransform: &UVTransform{
+							Aside: []float64{1, 0, 0},
+						},
+					},
+					{
+						Name: "TexGen1",
+						Base: "TexGen0",
+					},
+				},
+				Stages: []Stage{
+					{Name: "Stage1", TexGen: "1"},
+				},
+			},
+			wantWarn: 0,
+		},
+		{
+			name: "unknown_texgen_reference",
+			mat: &Material{
+				PixelShaderID:  "Super",
+				VertexShaderID: "Super",
+				Stages: []Stage{
+					{Name: "Stage1", TexGen: "7"},
+				},
+			},
+			wantWarn:    1,
+			wantMessage: "stage references unknown texGen",
+		},
+		{
+			name: "texgen_missing_base",
+			mat: &Material{
+				PixelShaderID:  "Super",
+				VertexShaderID: "Super",
+				TexGens: []TexGen{
+					{Name: "TexGen0", Base: "TexGenX"},
+				},
+				Stages: []Stage{
+					{Name: "Stage1", TexGen: "0"},
+				},
+			},
+			wantWarn:    1,
+			wantMessage: "texGen inheritance base not found",
+		},
+		{
+			name: "texgen_cycle",
+			mat: &Material{
+				PixelShaderID:  "Super",
+				VertexShaderID: "Super",
+				TexGens: []TexGen{
+					{Name: "TexGen0", Base: "TexGen1"},
+					{Name: "TexGen1", Base: "TexGen0"},
+				},
+				Stages: []Stage{
+					{Name: "Stage1", TexGen: "0"},
+				},
+			},
+			wantWarn:    1,
+			wantMessage: "texGen inheritance cycle detected",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			issues := Validate(tt.mat, &ValidateOptions{
+				DisableFileCheck:       true,
+				DisableShaderNameCheck: true,
+			})
+
+			var warns int
+			var hasMessage bool
+			for _, is := range issues {
+				if is.Level == IssueWarning {
+					warns++
+				}
+				if tt.wantMessage != "" && is.Message == tt.wantMessage {
+					hasMessage = true
+				}
+			}
+
+			if warns != tt.wantWarn {
+				t.Fatalf("unexpected warning count: got %d want %d issues=%v", warns, tt.wantWarn, issues)
+			}
+			if tt.wantMessage != "" && !hasMessage {
+				t.Fatalf("expected warning message %q, issues=%v", tt.wantMessage, issues)
+			}
+		})
+	}
+}
+
+func TestValidateShaderProfiles(t *testing.T) {
+	tests := []struct {
+		name     string
+		mat      *Material
+		opt      *ValidateOptions
+		wantWarn int
+	}{
+		{
+			name: "profile_disabled_has_no_profile_warnings",
+			mat: &Material{
+				PixelShaderID:  "Super",
+				VertexShaderID: "Super",
+				Stages: []Stage{
+					{Name: "Stage1", UVSource: "tex", UVTransform: &UVTransform{Aside: []float64{1, 0, 0}}},
+				},
+			},
+			opt: &ValidateOptions{
+				DisableFileCheck: true,
+			},
+			wantWarn: 0,
+		},
+		{
+			name: "profile_enabled_reports_missing_super_stages",
+			mat: &Material{
+				PixelShaderID:  "Super",
+				VertexShaderID: "Super",
+				Stages: []Stage{
+					{Name: "Stage1", UVSource: "tex", UVTransform: &UVTransform{Aside: []float64{1, 0, 0}}},
+				},
+			},
+			opt: &ValidateOptions{
+				DisableFileCheck:         true,
+				EnableShaderProfileCheck: true,
+			},
+			wantWarn: 6,
+		},
+		{
+			name: "profile_enabled_multi_all_stages_present",
+			mat: &Material{
+				PixelShaderID:  "Multi",
+				VertexShaderID: "Multi",
+				Stages: func() []Stage {
+					stages := make([]Stage, 0, 15)
+					for i := 0; i <= 14; i++ {
+						stages = append(stages, Stage{
+							Name:        "Stage" + strconv.Itoa(i),
+							UVSource:    "tex",
+							UVTransform: &UVTransform{Aside: []float64{1, 0, 0}},
+						})
+					}
+					return stages
+				}(),
+			},
+			opt: &ValidateOptions{
+				DisableFileCheck:         true,
+				EnableShaderProfileCheck: true,
+			},
+			wantWarn: 0,
+		},
+		{
+			name: "profile_enabled_multi_without_stage0",
+			mat: &Material{
+				PixelShaderID:  "Multi",
+				VertexShaderID: "Multi",
+				Stages: func() []Stage {
+					stages := make([]Stage, 0, 14)
+					for i := 1; i <= 14; i++ {
+						stages = append(stages, Stage{
+							Name:        "Stage" + strconv.Itoa(i),
+							UVSource:    "tex",
+							UVTransform: &UVTransform{Aside: []float64{1, 0, 0}},
+						})
+					}
+					return stages
+				}(),
+			},
+			opt: &ValidateOptions{
+				DisableFileCheck:         true,
+				EnableShaderProfileCheck: true,
+			},
+			wantWarn: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			issues := Validate(tt.mat, tt.opt)
+			var warns int
+			for _, it := range issues {
+				if it.Level == IssueWarning {
+					warns++
+				}
+			}
+
+			if warns != tt.wantWarn {
+				t.Fatalf("unexpected warnings: got=%d want=%d issues=%v", warns, tt.wantWarn, issues)
+			}
+		})
+	}
+}
+
+func TestValidateKnownNameChecksCaseInsensitive(t *testing.T) {
+	mat := &Material{
+		PixelShaderID:  "super",
+		VertexShaderID: "basicalpha",
+		Stages: []Stage{
+			{
+				Name:        "stage1",
+				UVSource:    "tex",
+				UVTransform: &UVTransform{Aside: []float64{1, 0, 0}},
+			},
+		},
+	}
+
+	issues := Validate(mat, &ValidateOptions{
+		DisableFileCheck:       true,
+		DisableShaderNameCheck: false,
+	})
+
+	for _, is := range issues {
+		if is.Message == "unknown PixelShaderID" ||
+			is.Message == "unknown VertexShaderID" ||
+			is.Message == "unknown Stage name" {
+			t.Fatalf("unexpected unknown-name warning with case-insensitive value: %v", issues)
+		}
 	}
 }
 

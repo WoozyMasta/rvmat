@@ -24,4 +24,16 @@ var (
 
 	// ErrTexGenCycle indicates a cycle in TexGen inheritance chain.
 	ErrTexGenCycle = errors.New("texgen inheritance cycle")
+
+	// ErrUnknownBaseMaterial indicates unknown material generator base material.
+	ErrUnknownBaseMaterial = errors.New("unknown base material")
+
+	// ErrInvalidGenerateOption indicates invalid value in GenerateOptions.
+	ErrInvalidGenerateOption = errors.New("invalid generate option")
+
+	// ErrMaterialNotFound indicates required material input is missing.
+	ErrMaterialNotFound = errors.New("material not found")
+
+	// ErrStageNotFound indicates required stage is missing.
+	ErrStageNotFound = errors.New("stage not found")
 )

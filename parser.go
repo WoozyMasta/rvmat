@@ -27,8 +27,7 @@ func Parse(data []byte, opt *ParseOptions) (*Material, error) {
 		return nil, ErrBinaryRVMAT
 	}
 
-	p := newParser(bytes.NewReader(data), popt)
-	return p.parseMaterial()
+	return parseMaterialBytes(data, popt)
 }
 
 // Decode parses a RVMAT from reader.
@@ -50,6 +49,12 @@ func DecodeFile(path string, opt *ParseOptions) (*Material, error) {
 		return nil, err
 	}
 	return Parse(b, opt)
+}
+
+// parseMaterialBytes parses material bytes with parser options.
+func parseMaterialBytes(data []byte, popt ParseOptions) (*Material, error) {
+	p := newParser(bytes.NewReader(data), popt)
+	return p.parseMaterial()
 }
 
 // parser represents a parser for the RVMAT file.
@@ -500,6 +505,10 @@ func (p *parser) parseTopAssign(m *Material) error {
 	}
 
 	if isArray {
+		if matchKey(nameTok.Lit, "emissive", !p.opt.DisableCaseInsensitive) {
+			return p.errorf(nameTok, "invalid key %q, use %q", nameTok.Lit, "emmisive")
+		}
+
 		// Hot path: arrays for top-level color fields.
 		switch {
 		case matchKey(nameTok.Lit, "ambient", !p.opt.DisableCaseInsensitive),
@@ -520,7 +529,7 @@ func (p *parser) parseTopAssign(m *Material) error {
 			case matchKey(nameTok.Lit, "forceddiffuse", !p.opt.DisableCaseInsensitive):
 				m.ForcedDiffuse = vals
 			case matchKey(nameTok.Lit, "emmisive", !p.opt.DisableCaseInsensitive):
-				m.Emmisive = vals
+				m.Emissive = vals
 			case matchKey(nameTok.Lit, "specular", !p.opt.DisableCaseInsensitive):
 				m.Specular = vals
 			}

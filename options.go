@@ -24,6 +24,9 @@ type ParseOptions struct {
 type FormatOptions struct {
 	// Indent is the indentation string for nested blocks (default is four spaces).
 	Indent string
+	// CompactStages writes StageN classes in one line when they only contain
+	// texture and texGen assignments.
+	CompactStages bool
 }
 
 // ValidateOptions controls validation rules.
@@ -42,6 +45,8 @@ type ValidateOptions struct {
 	// DisableShaderNameCheck disables validation of PixelShaderID, VertexShaderID, and Stage names
 	// against known lists from validate_lists.go.
 	DisableShaderNameCheck bool
+	// EnableShaderProfileCheck enables soft stage profile checks for known shaders.
+	EnableShaderProfileCheck bool
 }
 
 // TextureValidateOptions controls validation of procedural textures.
@@ -52,6 +57,18 @@ type TextureValidateOptions struct {
 	DisableProceduralArgsCheck bool
 	// DisableTextureTagCheck disables validation of known texture tags for color(...,tag) arguments.
 	DisableTextureTagCheck bool
+}
+
+// NormalizeOptions controls material normalization behavior.
+type NormalizeOptions struct {
+	// StageTextures fills fallback textures for empty known stage slots.
+	StageTextures bool
+	// StageOrder sorts stages in canonical order.
+	StageOrder bool
+	// TexGenOrder sorts texgens in canonical order.
+	TexGenOrder bool
+	// TexturePaths normalizes stage texture paths to game-style form.
+	TexturePaths bool
 }
 
 // IsGameRootExist reports whether the game root exists and is a directory.
@@ -111,6 +128,20 @@ func (o *ValidateOptions) normalize() ValidateOptions {
 func (o *TextureValidateOptions) normalize() TextureValidateOptions {
 	if o == nil {
 		return TextureValidateOptions{}
+	}
+
+	return *o
+}
+
+// normalize normalizes the NormalizeOptions.
+func (o *NormalizeOptions) normalize() NormalizeOptions {
+	if o == nil {
+		return NormalizeOptions{
+			StageTextures: true,
+			StageOrder:    true,
+			TexGenOrder:   true,
+			TexturePaths:  true,
+		}
 	}
 
 	return *o

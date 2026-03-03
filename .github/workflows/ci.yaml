@@ -19,4 +19,3 @@ jobs:
 
       - name: Run CI
         run: make ci
-

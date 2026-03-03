@@ -9,7 +9,7 @@ type Material struct {
 	Ambient        []float64 `json:"ambient,omitempty" yaml:"ambient,omitempty"`                   // Ambient color
 	Diffuse        []float64 `json:"diffuse,omitempty" yaml:"diffuse,omitempty"`                   // Diffuse color
 	ForcedDiffuse  []float64 `json:"forced_diffuse,omitempty" yaml:"forced_diffuse,omitempty"`     // Forced diffuse color
-	Emmisive       []float64 `json:"emmisive,omitempty" yaml:"emmisive,omitempty"`                 // Emmisive color
+	Emissive       []float64 `json:"emissive,omitempty" yaml:"emissive,omitempty"`                 // Emissive color (RVMAT key remains "emmisive")
 	Specular       []float64 `json:"specular,omitempty" yaml:"specular,omitempty"`                 // Specular color
 	SpecularPower  *float64  `json:"specular_power,omitempty" yaml:"specular_power,omitempty"`     // Specular power
 	PixelShaderID  string    `json:"pixel_shader_id,omitempty" yaml:"pixel_shader_id,omitempty"`   // Pixel shader ID

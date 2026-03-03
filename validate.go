@@ -5,8 +5,8 @@
 package rvmat
 
 import (
+	"errors"
 	"os"
-	"path/filepath"
 	"strings"
 )
 
@@ -44,21 +44,25 @@ func Validate(m *Material, opt *ValidateOptions) []Issue {
 
 	if !vopt.DisableShaderNameCheck {
 		if m.PixelShaderID != "" {
-			if _, ok := knownPixelShaderID[m.PixelShaderID]; !ok {
+			if !isKnownNameCI(knownPixelShaderID, m.PixelShaderID) {
 				out = append(out, Issue{Level: IssueWarning, Message: "unknown PixelShaderID", Path: m.PixelShaderID})
 			}
 		}
 		if m.VertexShaderID != "" {
-			if _, ok := knownVertexShaderID[m.VertexShaderID]; !ok {
+			if !isKnownNameCI(knownVertexShaderID, m.VertexShaderID) {
 				out = append(out, Issue{Level: IssueWarning, Message: "unknown VertexShaderID", Path: m.VertexShaderID})
 			}
 		}
 	}
 
+	if vopt.EnableShaderProfileCheck {
+		out = append(out, validateShaderProfiles(m)...)
+	}
+
 	out = append(out, validateColor("ambient", m.Ambient)...)
 	out = append(out, validateColor("diffuse", m.Diffuse)...)
 	out = append(out, validateColor("forcedDiffuse", m.ForcedDiffuse)...)
-	out = append(out, validateColor("emmisive", m.Emmisive)...)
+	out = append(out, validateColor("emissive", m.Emissive)...)
 	out = append(out, validateColor("specular", m.Specular)...)
 
 	// Check if file validation or extension validation is enabled
@@ -96,7 +100,7 @@ func Validate(m *Material, opt *ValidateOptions) []Issue {
 
 	for _, st := range m.Stages {
 		if !vopt.DisableShaderNameCheck {
-			if _, ok := knownStageNames[st.Name]; !ok {
+			if !isKnownNameCI(knownStageNames, st.Name) {
 				out = append(out, Issue{Level: IssueWarning, Message: "unknown Stage name", Path: st.Name})
 			}
 		}
@@ -106,25 +110,64 @@ func Validate(m *Material, opt *ValidateOptions) []Issue {
 			continue
 		}
 
-		// No UVs expected.
-		if st.UVSource == "none" || st.UVSource == "WorldPos" {
-			continue
-		}
-
-		// TexGen-driven stages usually omit uvSource/uvTransform.
+		uvSource := st.UVSource
+		uvTransform := st.UVTransform
 		if st.TexGen != "" {
+			resolved, err := ResolveStageTexGen(m, st)
+			if err != nil {
+				switch {
+				case errors.Is(err, ErrTexGenNotFound):
+					out = append(out, Issue{
+						Level:   IssueWarning,
+						Message: "stage references unknown texGen",
+						Path:    st.Name,
+					})
+
+				case errors.Is(err, ErrTexGenBaseNotFound):
+					out = append(out, Issue{
+						Level:   IssueWarning,
+						Message: "texGen inheritance base not found",
+						Path:    st.Name,
+					})
+
+				case errors.Is(err, ErrTexGenCycle):
+					out = append(out, Issue{
+						Level:   IssueWarning,
+						Message: "texGen inheritance cycle detected",
+						Path:    st.Name,
+					})
+
+				default:
+					out = append(out, Issue{
+						Level:   IssueWarning,
+						Message: "texGen resolution failed",
+						Path:    st.Name,
+					})
+				}
+
+				continue
+			}
+
+			if resolved != nil {
+				uvSource = resolved.UVSource
+				uvTransform = resolved.UVTransform
+			}
+		}
+
+		// No UVs expected.
+		if uvSource == "none" || uvSource == "WorldPos" {
 			continue
 		}
 
-		// Check if uvSource/uvTransform are missing.
-		if st.UVSource == "" && st.UVTransform == nil {
-			out = append(out, Issue{Level: IssueWarning, Message: "stage without texGen missing uvSource", Path: st.Name})
-			out = append(out, Issue{Level: IssueWarning, Message: "stage without texGen missing uvTransform", Path: st.Name})
+		// Check if effective uvSource/uvTransform are missing.
+		if uvSource == "" && uvTransform == nil {
+			out = append(out, Issue{Level: IssueWarning, Message: "stage missing effective uvSource", Path: st.Name})
+			out = append(out, Issue{Level: IssueWarning, Message: "stage missing effective uvTransform", Path: st.Name})
 			continue
 		}
 
-		if st.UVTransform == nil {
-			out = append(out, Issue{Level: IssueWarning, Message: "stage without texGen missing uvTransform", Path: st.Name})
+		if uvTransform == nil {
+			out = append(out, Issue{Level: IssueWarning, Message: "stage missing effective uvTransform", Path: st.Name})
 		}
 	}
 
@@ -138,6 +181,68 @@ func Validate(m *Material, opt *ValidateOptions) []Issue {
 			continue
 		}
 		seen[st.Name] = struct{}{}
+	}
+
+	return out
+}
+
+// isKnownNameCI checks known-name maps in case-insensitive mode.
+func isKnownNameCI(known map[string]struct{}, value string) bool {
+	if value == "" {
+		return false
+	}
+
+	if _, ok := known[value]; ok {
+		return true
+	}
+
+	for k := range known {
+		if strings.EqualFold(k, value) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// validateShaderProfiles performs soft expected-stage checks for known shaders.
+func validateShaderProfiles(m *Material) []Issue {
+	ps := strings.ToLower(strings.TrimSpace(m.PixelShaderID))
+	if ps == "" {
+		return nil
+	}
+
+	profile, ok := shaderProfileHints[ps]
+	if !ok {
+		return nil
+	}
+
+	seen := make(map[string]struct{}, len(m.Stages))
+	for _, st := range m.Stages {
+		seen[strings.ToLower(strings.TrimSpace(st.Name))] = struct{}{}
+	}
+
+	out := make([]Issue, 0, len(profile.Required)+len(profile.Recommended))
+	for _, stage := range profile.Required {
+		if _, ok := seen[strings.ToLower(stage)]; ok {
+			continue
+		}
+		out = append(out, Issue{
+			Level:   IssueWarning,
+			Message: "shader profile missing required stage",
+			Path:    stage,
+		})
+	}
+
+	for _, stage := range profile.Recommended {
+		if _, ok := seen[strings.ToLower(stage)]; ok {
+			continue
+		}
+		out = append(out, Issue{
+			Level:   IssueWarning,
+			Message: "shader profile missing common stage",
+			Path:    stage,
+		})
 	}
 
 	return out
@@ -174,22 +279,6 @@ func validateColor(name string, vals []float64) []Issue {
 		return []Issue{{Level: IssueError, Message: "color must have 4 components", Path: name}}
 	}
 	return nil
-}
-
-// hasAllowedExt checks if the path has an allowed extension.
-var defaultTextureExts = []string{".paa", ".pax", ".tga"}
-
-func hasAllowedExt(path string) bool {
-	ext := strings.ToLower(filepath.Ext(path))
-
-	// Check if the extension is allowed
-	for _, e := range defaultTextureExts {
-		if ext == strings.ToLower(e) {
-			return true
-		}
-	}
-
-	return false
 }
 
 // shouldExcludePath checks if the path should be excluded.

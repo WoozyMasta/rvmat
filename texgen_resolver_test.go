@@ -2,15 +2,18 @@ package rvmat
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"testing"
 )
 
 func TestResolveStageTexGen_InheritanceFromFixture(t *testing.T) {
-	m, err := DecodeFile(
-		filepath.Join("wiki", "game_data_examples", "structures", "bed_stacked.rvmat"),
-		nil,
-	)
+	fixturePath := filepath.Join("wiki", "game_data_examples", "structures", "bed_stacked.rvmat")
+	if _, statErr := os.Stat(fixturePath); statErr != nil {
+		t.Skipf("fixture is not available: %s", fixturePath)
+	}
+
+	m, err := DecodeFile(fixturePath, nil)
 	if err != nil {
 		t.Fatalf("decode fixture: %v", err)
 	}

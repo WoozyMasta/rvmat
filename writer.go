@@ -8,15 +8,41 @@ import (
 	"bufio"
 	"bytes"
 	"io"
+	"math"
 	"os"
 	"strconv"
+	"strings"
 )
+
+const (
+	prettyFloatDigits = 4
+)
+
+// formatPrettyFloat formats float values without common IEEE tail noise.
+func formatPrettyFloat(v float64) string {
+	if math.IsNaN(v) || math.IsInf(v, 0) {
+		return strconv.FormatFloat(v, 'g', -1, 64)
+	}
+
+	short := strconv.FormatFloat(v, 'f', prettyFloatDigits, 64)
+	short = strings.TrimRight(short, "0")
+	short = strings.TrimRight(short, ".")
+	if short == "" || short == "-0" {
+		short = "0"
+	}
+
+	return short
+}
 
 // Encode writes a Material to writer.
 func Encode(w io.Writer, m *Material, opt *FormatOptions) error {
 	fopt := opt.normalize()
 	bw, owned := toBufferedWriter(w)
-	wr := &writer{w: bw, indent: fopt.Indent}
+	wr := &writer{
+		w:             bw,
+		indent:        fopt.Indent,
+		compactStages: fopt.CompactStages,
+	}
 	if err := wr.writeMaterial(m); err != nil {
 		return err
 	}
@@ -42,7 +68,11 @@ func EncodeFile(path string, m *Material, opt *FormatOptions) error {
 func Format(m *Material, opt *FormatOptions) ([]byte, error) {
 	fopt := opt.normalize()
 	var buf bytes.Buffer
-	wr := &writer{w: &buf, indent: fopt.Indent}
+	wr := &writer{
+		w:             &buf,
+		indent:        fopt.Indent,
+		compactStages: fopt.CompactStages,
+	}
 	if err := wr.writeMaterial(m); err != nil {
 		return nil, err
 	}
@@ -61,9 +91,10 @@ func toBufferedWriter(w io.Writer) (*bufio.Writer, bool) {
 
 // writer writes a Material to a writer.
 type writer struct {
-	w      io.Writer // Writer to write to
-	indent string    // Indentation string
-	level  int       // Current nesting level
+	w             io.Writer // Writer to write to
+	indent        string    // Indentation string
+	level         int       // Current nesting level
+	compactStages bool      // Compact formatting for simple StageN classes
 }
 
 // writeMaterial writes a Material to the writer.
@@ -94,7 +125,7 @@ func (w *writer) writeMaterial(m *Material) error {
 	if err := writeArray("forcedDiffuse", m.ForcedDiffuse); err != nil {
 		return err
 	}
-	if err := writeArray("emmisive", m.Emmisive); err != nil {
+	if err := writeArray("emmisive", m.Emissive); err != nil {
 		return err
 	}
 	if err := writeArray("specular", m.Specular); err != nil {
@@ -171,6 +202,10 @@ func (w *writer) writeStage(s Stage) error {
 		name = "Stage"
 	}
 
+	if w.compactStages && isCompactStageCandidate(name, s) {
+		return w.writeCompactStage(name, s)
+	}
+
 	// Write stage class
 	if err := w.writeString("class "); err != nil {
 		return err
@@ -215,6 +250,59 @@ func (w *writer) writeStage(s Stage) error {
 
 	// Write stage end
 	return w.writeString("};\n")
+}
+
+// isCompactStageCandidate reports whether StageN can be rendered in one line.
+func isCompactStageCandidate(stageName string, stage Stage) bool {
+	if strings.TrimSpace(stage.Texture.Raw) == "" {
+		return false
+	}
+	if strings.TrimSpace(stage.TexGen) == "" {
+		return false
+	}
+	if strings.TrimSpace(stage.UVSource) != "" || stage.UVTransform != nil {
+		return false
+	}
+	if len(stage.extras) > 0 {
+		return false
+	}
+	if _, ok := parseIndexedName(stageName, "stage"); !ok {
+		return false
+	}
+
+	return true
+}
+
+// writeCompactStage writes one-line StageN class with texture and texGen.
+func (w *writer) writeCompactStage(stageName string, stage Stage) error {
+	if err := w.writeString("class "); err != nil {
+		return err
+	}
+	if err := w.writeString(stageName); err != nil {
+		return err
+	}
+	if err := w.writeString(" { texture = "); err != nil {
+		return err
+	}
+	if err := w.writeQuoted(NormalizeGameTexturePath(stage.Texture.Raw)); err != nil {
+		return err
+	}
+	if err := w.writeString("; texGen = "); err != nil {
+		return err
+	}
+
+	texGen := strings.TrimSpace(stage.TexGen)
+	if n, err := strconv.Atoi(texGen); err == nil {
+		if err := w.writeString(strconv.Itoa(n)); err != nil {
+			return err
+		}
+	} else {
+		if err := w.writeQuoted(texGen); err != nil {
+			return err
+		}
+	}
+
+	return w.writeString("; };\n")
 }
 
 // writeTexGen writes a TexGen to the writer.
@@ -441,6 +529,10 @@ func (w *writer) writeClass(c classNode) error {
 
 // writeAssign writes an assignNode to the writer.
 func (w *writer) writeAssign(name string, val value, isArray bool) error {
+	if val.Kind == valueString && matchKey(name, "texture", true) {
+		val.Str = NormalizeGameTexturePath(val.Str)
+	}
+
 	if err := w.writeIndent(); err != nil {
 		return err
 	}
@@ -490,9 +582,7 @@ func (w *writer) writeIndent() error {
 
 // writeNumber writes a float64 value to the writer.
 func (w *writer) writeNumber(v float64) error {
-	var buf [32]byte
-	b := strconv.AppendFloat(buf[:0], v, 'g', -1, 64)
-	_, err := w.w.Write(b)
+	_, err := io.WriteString(w.w, formatPrettyFloat(v))
 
 	return err
 }

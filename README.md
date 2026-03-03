@@ -1,12 +1,16 @@
-﻿# rvmat
+# rvmat
 
 Go library for parsing, validating, and writing
-Real Virtuality `.rvmat` material files.
+[Real Virtuality `.rvmat` material files](./RVMAT.md).
 
 * Fast parser with tolerances for real-world data
   (case-insensitive keys, comments, relaxed numeric arrays).
 * Deterministic writer (canonical formatting) with configurable indentation.
 * Helpers for procedural textures, path resolution, and validation.
+* Normalization API for stage order, TexGen order, fallback textures,
+  and texture path cleanup.
+* Generation APIs for baseline `Super` materials, damage/destruct variants,
+  and high-level material set output.
 * Validator supports configurable checks (shader/stage allowlists are optional).
 * Unknown fields are preserved internally and round-tripped.
 
@@ -16,7 +20,7 @@ Real Virtuality `.rvmat` material files.
 go get github.com/woozymasta/rvmat
 ```
 
-## Usage
+## Quick Start
 
 ```go
 m, err := rvmat.DecodeFile("material.rvmat", nil)
@@ -31,7 +35,7 @@ issues := rvmat.Validate(m, nil)
 out, err := rvmat.Format(m, nil)
 ```
 
-## Practical example
+## Examples
 
 Create a minimal material with a procedural texture:
 
@@ -42,7 +46,7 @@ m := &rvmat.Material{
   Ambient:        []float64{1, 1, 1, 1},
   Diffuse:        []float64{1, 1, 1, 1},
   ForcedDiffuse:  []float64{0, 0, 0, 0},
-  Emmisive:       []float64{0, 0, 0, 1},
+  Emissive:       []float64{0, 0, 0, 1},
   Specular:       []float64{0.75, 0.75, 0.75, 1},
 }
 
@@ -58,7 +62,7 @@ issues := rvmat.Validate(m, nil)
 out, err := rvmat.Format(m, nil)
 ```
 
-## Read/write
+### Read And Write
 
 Read from file:
 
@@ -89,7 +93,7 @@ Write to bytes:
 out, err := rvmat.Format(m, nil)
 ```
 
-### Parse options
+#### Parse Options
 
 Defaults are already tuned for real-world files.
 
@@ -103,31 +107,18 @@ opt := &rvmat.ParseOptions{
 m, err := rvmat.DecodeFile(path, opt)
 ```
 
-### Format options
+#### Format Options
 
 ```go
 fmtOpt := &rvmat.FormatOptions{
-  Indent: "    ", // tabs or spaces
+  Indent:        "    ", // tabs or spaces
+  CompactStages: true,   // one-line StageN blocks for texture+texGen
 }
 
 err := rvmat.EncodeFile("out.rvmat", m, fmtOpt)
 ```
 
-### Validate options
-
-```go
-valOpt := &rvmat.ValidateOptions{
-  DisableFileCheck:       true,
-  DisableExtensionsCheck: false,
-  GameRoot:               "P:\\",
-  DisableShaderNameCheck: true,
-  ExcludePaths:           []string{`dz\vehicles\*`},
-}
-
-issues := rvmat.Validate(m, valOpt)
-```
-
-## Procedural textures
+### Parse And Procedural Textures
 
 Parse a procedural texture:
 
@@ -155,7 +146,13 @@ issues := tex.Validate(&rvmat.TextureValidateOptions{
 })
 ```
 
-## Minimal structure example
+### Data Helpers
+
+* `TextureRef` represents either a file path or a procedural texture string.
+* `ParseTextureRef` and `NewProcedural*` help create procedural references.
+* `PathResolver` resolves texture paths against `GameRoot`.
+
+### Full Material Example
 
 ```go
 m := &rvmat.Material{
@@ -164,7 +161,7 @@ m := &rvmat.Material{
   Ambient:        []float64{1, 1, 1, 1},
   Diffuse:        []float64{1, 1, 1, 1},
   ForcedDiffuse:  []float64{0, 0, 0, 0},
-  Emmisive:       []float64{0, 0, 0, 1},
+  Emissive:       []float64{0, 0, 0, 1},
   Specular:       []float64{0.75, 0.75, 0.75, 1},
   Stages: []rvmat.Stage{
     {
@@ -182,27 +179,131 @@ m := &rvmat.Material{
 }
 ```
 
-## Behavior and edge cases
+### TexGen Resolution
 
-* **Binary rvmat**:
-  returns `ErrBinaryRVMAT`.
+Use these helpers to get effective UV data from a stage, including inherited
+`TexGen` chains:
+
+```go
+st := m.Stages[0]
+
+resolved, err := rvmat.ResolveStageTexGen(m, st)
+uvSource, err := rvmat.EffectiveUVSource(m, st)
+uvTransform, err := rvmat.EffectiveUVTransform(m, st)
+
+_, _, _ = resolved, uvSource, uvTransform
+```
+
+### Normalize
+
+`Normalize` applies safe, package-level normalization to an in-memory
+material:
+
+```go
+result, issues := rvmat.Normalize(m, &rvmat.NormalizeOptions{
+  StageTextures: true,
+  StageOrder:    true,
+  TexGenOrder:   true,
+  TexturePaths:  true,
+})
+
+_, _ = result, issues
+```
+
+### Validate
+
+Use `Validate` to run configurable checks for paths, shader names, and
+extensions:
+
+```go
+valOpt := &rvmat.ValidateOptions{
+  DisableFileCheck:       true,
+  DisableExtensionsCheck: false,
+  GameRoot:               "P:\\",
+  DisableShaderNameCheck: true,
+  ExcludePaths:           []string{`dz\vehicles\*`},
+}
+
+issues := rvmat.Validate(m, valOpt)
+```
+
+### Generate
+
+Use `Generate` for low-level generation and `GenerateSet`
+for high-level generation with output orchestration.
+
+Available base material profiles are:
+`textile`, `steel`, `rust`, `wood`, `glass`, `plastic`, `rubber`,
+`leather`, `earth`, `paper`, `concrete`, `stone`, `skin`.
+
+#### Modifier Effects
+
+* `Finish` changes reflectivity and highlight sharpness:
+  * `FinishMatte` reduces specular and `specularPower`,
+  * `FinishDefault`/`FinishSatin` keep baseline,
+  * `FinishGloss` increases both,
+  * `FinishPolished` increases both the most (with power clamp).
+* `Condition` simulates surface wear:
+  * `ConditionDefault`/`ConditionClean` keep baseline,
+  * `ConditionWorn` reduces specular and power slightly,
+  * `ConditionDirty` reduces them more,
+  * `ConditionOxidized` reduces them for aged/oxidized look.
+
+#### Low-Level Example
+
+```go
+mat, err := rvmat.Generate(rvmat.GenerateOptions{
+  BaseMaterial: rvmat.BaseMaterialSteel,
+  Finish:       rvmat.FinishGloss,
+  Condition:    rvmat.ConditionWorn,
+  UseTexGen:    true,
+})
+if err != nil {
+  // handle
+}
+
+damage, _ := rvmat.GenerateDamage(mat)
+destruct, _ := rvmat.GenerateDestruct(mat)
+_, _ = damage, destruct
+```
+
+#### High-Level Example
+
+```go
+result, err := rvmat.GenerateSet(rvmat.GenerateSetOptions{
+  OutputPath:   `assets\data\box`,
+  BaseMaterial: rvmat.BaseMaterialWood,
+  Finish:       rvmat.FinishMatte,
+  Condition:    rvmat.ConditionDirty,
+  BaseTexture:  `assets\data\box_co.paa`,
+})
+if err != nil {
+  // handle
+}
+
+err = rvmat.WriteGenerateSet(result, &rvmat.FormatOptions{Indent: "\t"})
+if err != nil {
+  // handle
+}
+```
+
+#### Generation Notes
+
+* `GenerateSet` creates main, damage, and destruct by default.
+* Disable variants with `DisableDamage` and `DisableDestruct`.
+* Override Stage3 macros with `DamageMacroTexture` and `DestructMacroTexture`.
+* Texture overrides accept both stage and role keys (`stage1`, `nohq`, etc.);
+  stage keys have priority when both target the same stage.
+* Use `StageIndexForTextureRole` to resolve role key to stage index.
+* Texture auto-fill prefers existing sibling files
+  by role suffix and extension priority (`.paa`, `.pax`, `.tga`, `.png`).
+
+### Behavior And Edge Cases
+
+* **Binary rvmat**: returns `ErrBinaryRVMAT`.
+  For binarize/debinarize workflows, see <https://github.com/WoozyMasta/rap>.
 * **Relaxed numbers**:
   numeric arrays may contain strings/expressions; invalid entries become `0`.
 * **Stage with texGen**:
   writer omits `uvSource` and `uvTransform` when `TexGen` is set.
-* **Unknown fields**:
-  preserved internally and round-tripped.
-
-## Data helpers
-
-* `TextureRef` represents either a file path or a procedural texture string.
-* `ParseTextureRef` and `NewProcedural*` help create procedural references.
-* `PathResolver` resolves texture paths against `GameRoot`.
-
-## References
-
-* <https://community.bistudio.com/wiki/RVMAT_basics>
-* <https://community.bistudio.com/wiki/Multimaterial>
-* <https://community.bistudio.com/wiki/DayZ:Projection_Layer>
-* <https://community.bistudio.com/wiki/Multimaterial>
-* <https://community.bistudio.com/wiki/Rvmat_File_Format>
+* **Unknown fields**: preserved internally and round-tripped.

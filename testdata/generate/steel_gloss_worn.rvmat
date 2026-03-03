@@ -1,0 +1,54 @@
+ambient[]={1, 1, 1, 1};
+diffuse[]={1, 1, 1, 1};
+forcedDiffuse[]={0, 0, 0, 0};
+emmisive[]={0, 0, 0, 1};
+specular[]={0.1483, 0.1483, 0.1483, 1};
+specularPower=102.4;
+PixelShaderID="Super";
+VertexShaderID="Super";
+class TexGen0
+{
+    uvSource="tex";
+    class uvTransform
+    {
+        aside[]={1, 0, 0};
+        up[]={0, 1, 0};
+        dir[]={0, 0, 0};
+        pos[]={0, 0, 0};
+    };
+};
+class Stage1
+{
+    texture="#(argb,8,8,3)color(0.5,0.5,1,1,nohq)";
+    texGen="0";
+};
+class Stage2
+{
+    texture="#(argb,8,8,3)color(0.5,0.5,0.5,1,dt)";
+    texGen="0";
+};
+class Stage3
+{
+    texture="#(argb,8,8,3)color(0.5,0.5,0.5,1,mc)";
+    texGen="0";
+};
+class Stage4
+{
+    texture="#(argb,8,8,3)color(0.9,0.9,0.9,1,as)";
+    texGen="0";
+};
+class Stage5
+{
+    texture="#(argb,8,8,3)color(1,0.2907,0.4743,1,smdi)";
+    texGen="0";
+};
+class Stage6
+{
+    texture="#(ai,64,1,1)fresnel(1,0.7)";
+    texGen="0";
+};
+class Stage7
+{
+    texture="dz\data\data\env_land_co.paa";
+    texGen="0";
+};

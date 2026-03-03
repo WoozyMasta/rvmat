@@ -143,3 +143,58 @@ var knownTextureTags = map[string]struct{}{
 	"sm":        {},
 	"normalmap": {},
 }
+
+// shaderProfileHint keeps soft stage hints for known pixel shader profiles.
+type shaderProfileHint struct {
+	Required    []string // Required stages in normal valid files.
+	Recommended []string // Common stages that are usually present.
+}
+
+// shaderProfileHints defines data-driven profile hints used by Validate.
+//
+// Notes from local corpus (2026-03-03, P:\DZ):
+//   - super: Stage1/2/3/5/6 found in all files, Stage4/7 almost always.
+//   - multi: Stage1..14 found in all files, Stage0 almost always.
+//   - glass: Stage1/2 found in all files.
+var shaderProfileHints = map[string]shaderProfileHint{
+	"super": {
+		Required: []string{
+			"Stage1",
+			"Stage2",
+			"Stage3",
+			"Stage5",
+			"Stage6",
+		},
+		Recommended: []string{
+			"Stage4",
+			"Stage7",
+		},
+	},
+	"multi": {
+		Required: []string{
+			"Stage1",
+			"Stage2",
+			"Stage3",
+			"Stage4",
+			"Stage5",
+			"Stage6",
+			"Stage7",
+			"Stage8",
+			"Stage9",
+			"Stage10",
+			"Stage11",
+			"Stage12",
+			"Stage13",
+			"Stage14",
+		},
+		Recommended: []string{
+			"Stage0",
+		},
+	},
+	"glass": {
+		Required: []string{
+			"Stage1",
+			"Stage2",
+		},
+	},
+}
