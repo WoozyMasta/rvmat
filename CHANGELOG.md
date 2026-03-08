@@ -13,6 +13,21 @@ and this project adheres to [Semantic Versioning][].
 ### Removed
 -->
 
+## [0.3.1][] - 2026-03-08
+
+### Added
+
+* Validation for `uvTransform` fields presence and vector components count.
+* Validation for procedural texture types, functions and arguments counts.
+* Validation for stage count in `Super` and `Multi` shaders.
+* Generator option for texture prefix path prepend.
+
+### Changed
+
+* Default stage textures updated to match game-style colors.
+
+[0.3.1]: https://github.com/WoozyMasta/rvmat/compare/v0.3.0...v0.3.1
+
 ## [0.3.0][] - 2026-03-04
 
 ### Added
