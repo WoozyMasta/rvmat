@@ -234,6 +234,15 @@ func floatPtr(v float64) *float64 {
 	return &v
 }
 
+func validUVTransform() *UVTransform {
+	return &UVTransform{
+		Aside: []float64{1, 0, 0},
+		Up:    []float64{0, 1, 0},
+		Dir:   []float64{0, 0, 0},
+		Pos:   []float64{0, 0, 0},
+	}
+}
+
 func TestValidateTable(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -471,7 +480,7 @@ func TestValidateShaderProfiles(t *testing.T) {
 				PixelShaderID:  "Super",
 				VertexShaderID: "Super",
 				Stages: []Stage{
-					{Name: "Stage1", UVSource: "tex", UVTransform: &UVTransform{Aside: []float64{1, 0, 0}}},
+					{Name: "Stage1", UVSource: "tex", UVTransform: validUVTransform()},
 				},
 			},
 			opt: &ValidateOptions{
@@ -485,7 +494,7 @@ func TestValidateShaderProfiles(t *testing.T) {
 				PixelShaderID:  "Super",
 				VertexShaderID: "Super",
 				Stages: []Stage{
-					{Name: "Stage1", UVSource: "tex", UVTransform: &UVTransform{Aside: []float64{1, 0, 0}}},
+					{Name: "Stage1", UVSource: "tex", UVTransform: validUVTransform()},
 				},
 			},
 			opt: &ValidateOptions{
@@ -505,7 +514,7 @@ func TestValidateShaderProfiles(t *testing.T) {
 						stages = append(stages, Stage{
 							Name:        "Stage" + strconv.Itoa(i),
 							UVSource:    "tex",
-							UVTransform: &UVTransform{Aside: []float64{1, 0, 0}},
+							UVTransform: validUVTransform(),
 						})
 					}
 					return stages
@@ -528,7 +537,7 @@ func TestValidateShaderProfiles(t *testing.T) {
 						stages = append(stages, Stage{
 							Name:        "Stage" + strconv.Itoa(i),
 							UVSource:    "tex",
-							UVTransform: &UVTransform{Aside: []float64{1, 0, 0}},
+							UVTransform: validUVTransform(),
 						})
 					}
 					return stages
@@ -567,7 +576,7 @@ func TestValidateKnownNameChecksCaseInsensitive(t *testing.T) {
 			{
 				Name:        "stage1",
 				UVSource:    "tex",
-				UVTransform: &UVTransform{Aside: []float64{1, 0, 0}},
+				UVTransform: validUVTransform(),
 			},
 		},
 	}
@@ -583,6 +592,39 @@ func TestValidateKnownNameChecksCaseInsensitive(t *testing.T) {
 			is.Message == "unknown Stage name" {
 			t.Fatalf("unexpected unknown-name warning with case-insensitive value: %v", issues)
 		}
+	}
+}
+
+func TestValidateUVTransformVectors(t *testing.T) {
+	mat := &Material{
+		PixelShaderID:  "Super",
+		VertexShaderID: "Super",
+		Stages: []Stage{
+			{
+				Name:     "Stage1",
+				Texture:  ParseTextureRef(`dz\gear\cooking\data\cauldron_nohq.paa`),
+				UVSource: "tex",
+				UVTransform: &UVTransform{
+					Aside: []float64{1, 0, 0},
+					Up:    []float64{0, 1},
+				},
+			},
+		},
+	}
+
+	issues := Validate(mat, &ValidateOptions{
+		DisableFileCheck: true,
+	})
+
+	var errs int
+	for _, issue := range issues {
+		if issue.Level == IssueError {
+			errs++
+		}
+	}
+
+	if errs != 3 {
+		t.Fatalf("unexpected uvTransform errors: got=%d issues=%v", errs, issues)
 	}
 }
 
@@ -623,7 +665,7 @@ func TestValidateTextureTable(t *testing.T) {
 			opt: &TextureValidateOptions{
 				DisableProceduralArgsCheck: false,
 			},
-			wantWarn: 1,
+			wantWarn: 2,
 			wantErr:  0,
 		},
 		{
@@ -631,6 +673,33 @@ func TestValidateTextureTable(t *testing.T) {
 			tex:  ParseTextureRef(`#(argb,8,8,3)color(1,1,1,1,wat)`),
 			opt: &TextureValidateOptions{
 				DisableTextureTagCheck: false,
+			},
+			wantWarn: 1,
+			wantErr:  0,
+		},
+		{
+			name: "unknown_format",
+			tex:  ParseTextureRef(`#(rgba,8,8,3)color(1,1,1,1,co)`),
+			opt: &TextureValidateOptions{
+				DisableProceduralFnCheck: false,
+			},
+			wantWarn: 1,
+			wantErr:  0,
+		},
+		{
+			name: "invalid_header_dimensions",
+			tex:  ParseTextureRef(`#(argb,0,8,3)color(1,1,1,1,co)`),
+			opt: &TextureValidateOptions{
+				DisableProceduralFnCheck: false,
+			},
+			wantWarn: 1,
+			wantErr:  0,
+		},
+		{
+			name: "invalid_numeric_args",
+			tex:  ParseTextureRef(`#(argb,8,8,3)color(x,1,1,1,co)`),
+			opt: &TextureValidateOptions{
+				DisableProceduralArgsCheck: false,
 			},
 			wantWarn: 1,
 			wantErr:  0,

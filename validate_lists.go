@@ -106,6 +106,12 @@ var knownProceduralFns = map[string]struct{}{
 	"irradiance":   {},
 }
 
+// Known procedural texture header formats.
+var knownProceduralFormats = map[string]struct{}{
+	"argb": {},
+	"ai":   {},
+}
+
 // Known texture tags observed in procedural color() references.
 var knownTextureTags = map[string]struct{}{
 	"as":        {},
@@ -172,6 +178,7 @@ var shaderProfileHints = map[string]shaderProfileHint{
 	},
 	"multi": {
 		Required: []string{
+			"Stage0",
 			"Stage1",
 			"Stage2",
 			"Stage3",
@@ -186,9 +193,6 @@ var shaderProfileHints = map[string]shaderProfileHint{
 			"Stage12",
 			"Stage13",
 			"Stage14",
-		},
-		Recommended: []string{
-			"Stage0",
 		},
 	},
 	"glass": {

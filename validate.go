@@ -59,6 +59,14 @@ func Validate(m *Material, opt *ValidateOptions) []Issue {
 		out = append(out, validateShaderProfiles(m)...)
 	}
 
+	for _, texGen := range m.TexGens {
+		if texGen.UVTransform == nil {
+			continue
+		}
+
+		out = append(out, validateUVTransform(texGen.Name, texGen.UVTransform)...)
+	}
+
 	out = append(out, validateColor("ambient", m.Ambient)...)
 	out = append(out, validateColor("diffuse", m.Diffuse)...)
 	out = append(out, validateColor("forcedDiffuse", m.ForcedDiffuse)...)
@@ -155,6 +163,10 @@ func Validate(m *Material, opt *ValidateOptions) []Issue {
 		}
 
 		// No UVs expected.
+		if uvTransform != nil {
+			out = append(out, validateUVTransform(st.Name, uvTransform)...)
+		}
+
 		if uvSource == "none" || uvSource == "WorldPos" {
 			continue
 		}
@@ -223,10 +235,12 @@ func validateShaderProfiles(m *Material) []Issue {
 	}
 
 	out := make([]Issue, 0, len(profile.Required)+len(profile.Recommended))
+	hasMissingProfileStages := false
 	for _, stage := range profile.Required {
 		if _, ok := seen[strings.ToLower(stage)]; ok {
 			continue
 		}
+		hasMissingProfileStages = true
 		out = append(out, Issue{
 			Level:   IssueWarning,
 			Message: "shader profile missing required stage",
@@ -238,6 +252,7 @@ func validateShaderProfiles(m *Material) []Issue {
 		if _, ok := seen[strings.ToLower(stage)]; ok {
 			continue
 		}
+		hasMissingProfileStages = true
 		out = append(out, Issue{
 			Level:   IssueWarning,
 			Message: "shader profile missing common stage",
@@ -245,7 +260,71 @@ func validateShaderProfiles(m *Material) []Issue {
 		})
 	}
 
+	if !hasMissingProfileStages {
+		out = append(out, validateStrictShaderStageSet(ps, seen)...)
+	}
+
 	return out
+}
+
+// validateStrictShaderStageSet checks strict stage sets for known shader profiles.
+func validateStrictShaderStageSet(profile string, seen map[string]struct{}) []Issue {
+	switch profile {
+	case "super":
+		return validateExpectedStageSet(
+			seen,
+			[]string{
+				"stage1", "stage2", "stage3", "stage4", "stage5", "stage6", "stage7",
+			},
+			[]string{"stage0"},
+			"shader profile stage set mismatch (expected Stage1..Stage7, Stage0 optional)",
+		)
+	case "multi":
+		return validateExpectedStageSet(
+			seen,
+			[]string{
+				"stage0", "stage1", "stage2", "stage3", "stage4", "stage5", "stage6", "stage7",
+				"stage8", "stage9", "stage10", "stage11", "stage12", "stage13", "stage14",
+			},
+			nil,
+			"shader profile stage set mismatch (expected Stage0..Stage14)",
+		)
+	default:
+		return nil
+	}
+}
+
+// validateExpectedStageSet validates required/optional stage sets.
+func validateExpectedStageSet(seen map[string]struct{}, required, optional []string, message string) []Issue {
+	requiredSet := make(map[string]struct{}, len(required))
+	for _, stage := range required {
+		requiredSet[strings.ToLower(strings.TrimSpace(stage))] = struct{}{}
+	}
+
+	optionalSet := make(map[string]struct{}, len(optional))
+	for _, stage := range optional {
+		optionalSet[strings.ToLower(strings.TrimSpace(stage))] = struct{}{}
+	}
+
+	for stage := range requiredSet {
+		if _, ok := seen[stage]; !ok {
+			return []Issue{{Level: IssueWarning, Message: message}}
+		}
+	}
+
+	for stage := range seen {
+		if _, ok := requiredSet[stage]; ok {
+			continue
+		}
+		if _, ok := optionalSet[stage]; ok {
+			continue
+		}
+		if strings.HasPrefix(stage, "stage") {
+			return []Issue{{Level: IssueWarning, Message: message}}
+		}
+	}
+
+	return nil
 }
 
 // ValidateWithTextureOptions validates a material and its textures.
@@ -278,6 +357,47 @@ func validateColor(name string, vals []float64) []Issue {
 	if len(vals) != 4 {
 		return []Issue{{Level: IssueError, Message: "color must have 4 components", Path: name}}
 	}
+	return nil
+}
+
+// validateUVTransform validates uvTransform vectors layout.
+func validateUVTransform(path string, transform *UVTransform) []Issue {
+	if transform == nil {
+		return nil
+	}
+
+	var out []Issue
+	out = append(out, validateUVTransformVector(path, "aside", transform.Aside)...)
+	out = append(out, validateUVTransformVector(path, "up", transform.Up)...)
+	out = append(out, validateUVTransformVector(path, "dir", transform.Dir)...)
+	out = append(out, validateUVTransformVector(path, "pos", transform.Pos)...)
+
+	return out
+}
+
+// validateUVTransformVector validates one uvTransform vector component.
+func validateUVTransformVector(path, field string, values []float64) []Issue {
+	vectorPath := path
+	if strings.TrimSpace(field) != "" {
+		vectorPath = path + ".uvTransform." + field
+	}
+
+	if len(values) == 0 {
+		return []Issue{{
+			Level:   IssueError,
+			Message: "uvTransform vector is required",
+			Path:    vectorPath,
+		}}
+	}
+
+	if len(values) != 3 {
+		return []Issue{{
+			Level:   IssueError,
+			Message: "uvTransform vector must have 3 components",
+			Path:    vectorPath,
+		}}
+	}
+
 	return nil
 }
 
@@ -347,9 +467,22 @@ func validateTexture(t TextureRef, opt TextureValidateOptions) []Issue {
 		}
 	}
 
+	if !opt.DisableProceduralFnCheck {
+		if _, ok := knownProceduralFormats[strings.ToLower(strings.TrimSpace(pt.Format))]; !ok {
+			out = append(out, Issue{Level: IssueWarning, Message: "unknown procedural texture format", Path: pt.Format})
+		}
+	}
+
+	if pt.Width <= 0 || pt.Height <= 0 || pt.Mip < 0 {
+		out = append(out, Issue{Level: IssueWarning, Message: "invalid procedural texture header dimensions", Path: t.Raw})
+	}
+
 	if !opt.DisableProceduralArgsCheck {
 		if !proceduralArgsOK(fn, pt.Args) {
 			out = append(out, Issue{Level: IssueWarning, Message: "unexpected procedural argument count", Path: pt.Func})
+		}
+		if !proceduralNumericArgsOK(fn, pt, pt.Args) {
+			out = append(out, Issue{Level: IssueWarning, Message: "invalid procedural numeric arguments", Path: pt.Func})
 		}
 	}
 
@@ -381,6 +514,29 @@ func proceduralArgsOK(fn string, args []string) bool {
 		return len(args) == 0 || len(args) == 1 || len(args) == 2
 	case "irradiance":
 		return len(args) == 1
+	default:
+		return true
+	}
+}
+
+// proceduralNumericArgsOK checks parsed numeric arguments for known functions.
+func proceduralNumericArgsOK(fn string, pt *ProceduralTexture, args []string) bool {
+	if pt == nil {
+		return false
+	}
+
+	switch fn {
+	case "color":
+		return pt.Color != nil
+	case "fresnel":
+		return pt.Fresnel != nil
+	case "fresnelglass":
+		if len(args) == 0 {
+			return true
+		}
+		return pt.Fresnel != nil
+	case "irradiance":
+		return pt.Irradiance != nil
 	default:
 		return true
 	}
