@@ -44,6 +44,9 @@ type GenerateSetOptions struct {
 	OutputPath string `json:"output_path,omitempty" yaml:"output_path,omitempty"`
 	// BaseTexture is source texture path used for auto-fill and derivation.
 	BaseTexture string `json:"base_texture,omitempty" yaml:"base_texture,omitempty"`
+	// TexturePrefix prepends a path prefix to generated local texture paths.
+	// Known game-root paths (for example dz\*, ca\*, a3\*) are kept as-is.
+	TexturePrefix string `json:"texture_prefix,omitempty" yaml:"texture_prefix,omitempty"`
 	// DamageMacroTexture overrides Stage3 macro texture for damage variant.
 	DamageMacroTexture string `json:"damage_macro_texture,omitempty" yaml:"damage_macro_texture,omitempty"`
 	// DestructMacroTexture overrides Stage3 macro texture for destruct variant.

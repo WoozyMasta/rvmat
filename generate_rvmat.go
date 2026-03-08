@@ -85,6 +85,8 @@ func GenerateSet(opts GenerateSetOptions) (*GenerateSetResult, error) {
 		return nil, fmt.Errorf("generate rvmat: %w", err)
 	}
 
+	applyTexturePrefixToMaterial(main, opts.TexturePrefix)
+
 	// build result
 	result := &GenerateSetResult{
 		Main:               main,
@@ -409,6 +411,54 @@ func normalizeTexturePathMap(in map[string]string) map[string]string {
 	}
 
 	return out
+}
+
+// applyTexturePrefixToMaterial prepends prefix to path textures in material.
+func applyTexturePrefixToMaterial(mat *Material, prefix string) {
+	if mat == nil {
+		return
+	}
+
+	for i := range mat.Stages {
+		stage := &mat.Stages[i]
+		if !stage.Texture.IsPath() {
+			continue
+		}
+
+		stage.Texture.Raw = withTexturePrefix(stage.Texture.Raw, prefix)
+	}
+}
+
+// withTexturePrefix returns normalized texture path with prefix applied.
+func withTexturePrefix(rawPath, prefix string) string {
+	normalizedPath := NormalizeGameTexturePath(rawPath)
+	if strings.TrimSpace(normalizedPath) == "" {
+		return normalizedPath
+	}
+	if hasKnownGameRootPrefix(normalizedPath) {
+		return normalizedPath
+	}
+
+	normalizedPrefix := strings.TrimSpace(NormalizeGameTexturePath(prefix))
+	if normalizedPrefix == "" {
+		return normalizedPath
+	}
+	if normalizedPath == normalizedPrefix || strings.HasPrefix(normalizedPath, normalizedPrefix+`\`) {
+		return normalizedPath
+	}
+
+	return NormalizeGameTexturePath(normalizedPrefix + `\` + normalizedPath)
+}
+
+// hasKnownGameRootPrefix reports whether path already uses a known game root.
+func hasKnownGameRootPrefix(path string) bool {
+	for _, root := range []string{`dz\`, `ca\`, `a3\`} {
+		if strings.HasPrefix(path, root) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // colorSuffixPriorityForMaterial returns base color suffix preference by material.

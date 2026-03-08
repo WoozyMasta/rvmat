@@ -203,6 +203,28 @@ func TestGenerateUnknownBaseMaterial(t *testing.T) {
 	}
 }
 
+func TestGenerateFallbackProceduralDefaults(t *testing.T) {
+	mat, err := Generate(GenerateOptions{
+		BaseMaterial: BaseMaterialTextile,
+	})
+	if err != nil {
+		t.Fatalf("generate material: %v", err)
+	}
+
+	stage1 := findMaterialStageByName(mat, "Stage1")
+	stage3 := findMaterialStageByName(mat, "Stage3")
+	if stage1 == nil || stage3 == nil {
+		t.Fatalf("expected Stage1 and Stage3")
+	}
+
+	if stage1.Texture.Raw != `#(argb,8,8,3)color(0.5,0.5,1,1,NOHQ)` {
+		t.Fatalf("unexpected Stage1 texture: %q", stage1.Texture.Raw)
+	}
+	if stage3.Texture.Raw != `#(argb,8,8,3)color(0.5,0.5,0.5,0,MC)` {
+		t.Fatalf("unexpected Stage3 texture: %q", stage3.Texture.Raw)
+	}
+}
+
 func TestGenerateFallbackASAndSMDIAreMaterialAware(t *testing.T) {
 	textile, err := Generate(GenerateOptions{
 		BaseMaterial: BaseMaterialTextile,
@@ -247,6 +269,26 @@ func TestGenerateFallbackASAndSMDIAreMaterialAware(t *testing.T) {
 	}
 	if !(metalSMDIColor.B > textileSMDIColor.B) {
 		t.Fatalf("expected metal SMDI gloss (B) > textile: metal=%f textile=%f", metalSMDIColor.B, textileSMDIColor.B)
+	}
+}
+
+func TestGenerateFallbackMCAlphaIsZero(t *testing.T) {
+	mat, err := Generate(GenerateOptions{
+		BaseMaterial: BaseMaterialSteel,
+	})
+	if err != nil {
+		t.Fatalf("generate material: %v", err)
+	}
+
+	stage3 := findMaterialStageByName(mat, "Stage3")
+	if stage3 == nil {
+		t.Fatalf("expected Stage3")
+	}
+	if stage3.Texture.Procedural == nil || stage3.Texture.Procedural.Color == nil {
+		t.Fatalf("expected procedural color in Stage3")
+	}
+	if stage3.Texture.Procedural.Color.A != 0 {
+		t.Fatalf("expected Stage3 alpha=0, got %v", stage3.Texture.Procedural.Color.A)
 	}
 }
 

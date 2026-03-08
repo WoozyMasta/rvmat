@@ -6,20 +6,21 @@ package rvmat
 
 // defaultStageFallbackTextures defines safe procedural placeholders by stage role.
 var defaultStageFallbackTextures = map[string]TextureRef{
-	"stage0": NewProceduralColor("argb", 8, 8, 3, 0.5, 0.5, 0.5, 1.0, "co"),
-	"stage1": NewProceduralColor("argb", 8, 8, 3, 0.5, 0.5, 1.0, 1.0, "nohq"),
-	"stage2": NewProceduralColor("argb", 8, 8, 3, 0.5, 0.5, 0.5, 1.0, "dt"),
-	"stage3": NewProceduralColor("argb", 8, 8, 3, 0.5, 0.5, 0.5, 1.0, "mc"),
-	"stage4": NewProceduralColor("argb", 8, 8, 3, 1.0, 1.0, 1.0, 1.0, "as"),
-	"stage5": NewProceduralColor("argb", 8, 8, 3, 0.5, 0.5, 0.5, 1.0, "smdi"),
-	"stage6": NewProceduralFresnel("ai", 32, 128, 1, 1.96, 0.01),
-	"stage7": NewProceduralIrradiance("ai", 32, 128, 1, 1.0),
+	"stage0": NewProceduralColor("argb", 8, 8, 3, 0.5, 0.5, 0.5, 1.0, "CO"),
+	"stage1": NewProceduralColor("argb", 8, 8, 3, 0.5, 0.5, 1.0, 1.0, "NOHQ"),
+	"stage2": NewProceduralColor("argb", 8, 8, 3, 0.5, 0.5, 0.5, 1.0, "DT"),
+	"stage3": NewProceduralColor("argb", 8, 8, 3, 0.5, 0.5, 0.5, 0.0, "MC"),
+	"stage4": NewProceduralColor("argb", 8, 8, 3, 0.74, 0.74, 0.74, 1.0, "AS"),
+	"stage5": NewProceduralColor("argb", 8, 8, 3, 1.0, 0.0944, 0.1743, 1.0, "SMDI"),
+	"stage6": NewProceduralFresnel("ai", 64, 1, 1, 1.23, 0.36),
+	"stage7": ParseTextureRef(DefaultEnvironmentTextureProcedural),
 }
 
 // NormalizeResult reports what was changed by Normalize.
 type NormalizeResult struct {
 	// StageTexturesFilled is count of stages where missing texture was filled.
 	StageTexturesFilled int `json:"stage_textures_filled,omitempty" yaml:"stage_textures_filled,omitempty"`
+
 	// TexturePathsNormalized is count of stage textures normalized to game-style path.
 	TexturePathsNormalized int `json:"texture_paths_normalized,omitempty" yaml:"texture_paths_normalized,omitempty"`
 

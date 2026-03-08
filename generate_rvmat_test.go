@@ -444,6 +444,35 @@ func TestGenerateSetDisableTexGenUsesInlineUV(t *testing.T) {
 	}
 }
 
+func TestGenerateSetTexturePrefix(t *testing.T) {
+	tmp := t.TempDir()
+	mustTouchFile(t, filepath.Join(tmp, "testbox_co.paa"))
+	mustTouchFile(t, filepath.Join(tmp, "testbox_nohq.paa"))
+
+	result, err := GenerateSet(GenerateSetOptions{
+		BaseTexture:         filepath.Join(tmp, "testbox_co.paa"),
+		TextureAutoFillMode: TextureAutoFillModeFromBaseTexture,
+		TexturePrefix:       "my/some/mod",
+		DisableDamage:       true,
+		DisableDestruct:     true,
+	})
+	if err != nil {
+		t.Fatalf("generate rvmat: %v", err)
+	}
+
+	stage1 := findMaterialStageByName(result.Main, "Stage1")
+	stage7 := findMaterialStageByName(result.Main, "Stage7")
+	if stage1 == nil || stage7 == nil {
+		t.Fatalf("expected Stage1 and Stage7")
+	}
+	if !strings.HasPrefix(stage1.Texture.Raw, `my\some\mod\`) {
+		t.Fatalf("unexpected Stage1 texture: %q", stage1.Texture.Raw)
+	}
+	if !strings.HasPrefix(stage7.Texture.Raw, `dz\`) {
+		t.Fatalf("unexpected Stage7 texture: %q", stage7.Texture.Raw)
+	}
+}
+
 func TestGenerateSetDisableDamageAndDestruct(t *testing.T) {
 	result, err := GenerateSet(GenerateSetOptions{
 		DisableDamage:   true,

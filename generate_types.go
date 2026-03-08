@@ -13,6 +13,8 @@ const (
 	DefaultDestructMacroTexture = `dz\characters\data\generic_destruct_mc.paa`
 	// DefaultEnvironmentTexture is default Stage7 environment texture.
 	DefaultEnvironmentTexture = `dz\data\data\env_land_co.paa`
+	// DefaultEnvironmentTextureProcedural is optional procedural Stage7 fallback.
+	DefaultEnvironmentTextureProcedural = `#(argb,8,8,3)color(4,4,4,1,CA)`
 )
 
 // BaseMaterial identifies baseline material family for generator.

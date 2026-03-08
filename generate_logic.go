@@ -259,14 +259,14 @@ func splitBaseTextureStem(baseTexture string) (string, string, bool) {
 func fallbackTextureForRole(role string, seed materialSeed, specular [4]float64, power float64) TextureRef {
 	switch role {
 	case "nohq":
-		return NewProceduralColor("argb", 8, 8, 3, 0.5, 0.5, 1, 1, "nohq")
+		return NewProceduralColor("argb", 8, 8, 3, 0.5, 0.5, 1, 1, "NOHQ")
 	case "dt":
-		return NewProceduralColor("argb", 8, 8, 3, 0.5, 0.5, 0.5, 1, "dt")
+		return NewProceduralColor("argb", 8, 8, 3, 0.5, 0.5, 0.5, 1, "DT")
 	case "mc":
-		return NewProceduralColor("argb", 8, 8, 3, 0.5, 0.5, 0.5, 1, "mc")
+		return NewProceduralColor("argb", 8, 8, 3, 0.5, 0.5, 0.5, 0, "MC")
 	case "as":
 		ao := defaultASFromMaterialClass(seed.materialClass)
-		return NewProceduralColor("argb", 8, 8, 3, ao, ao, ao, 1, "as")
+		return NewProceduralColor("argb", 8, 8, 3, ao, ao, ao, 1, "AS")
 	case "smdi":
 		specMean := (specular[0] + specular[1] + specular[2]) / 3
 		specRatio := clamp01(specMean / 0.35)
@@ -274,7 +274,7 @@ func fallbackTextureForRole(role string, seed materialSeed, specular [4]float64,
 		gMin, gMax, bMin, bMax := defaultSMDIRangeFromMaterialClass(seed.materialClass)
 		g := gMin + (gMax-gMin)*specRatio
 		b := bMin + (bMax-bMin)*glossRatio
-		return NewProceduralColor("argb", 8, 8, 3, 1, clamp01(g), clamp01(b), 1, "smdi")
+		return NewProceduralColor("argb", 8, 8, 3, 1, clamp01(g), clamp01(b), 1, "SMDI")
 	case "env":
 		return ParseTextureRef(DefaultEnvironmentTexture)
 	default:
