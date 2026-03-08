@@ -366,7 +366,7 @@ func validateUVTransform(path string, transform *UVTransform) []Issue {
 		return nil
 	}
 
-	var out []Issue
+	out := make([]Issue, 0, 4)
 	out = append(out, validateUVTransformVector(path, "aside", transform.Aside)...)
 	out = append(out, validateUVTransformVector(path, "up", transform.Up)...)
 	out = append(out, validateUVTransformVector(path, "dir", transform.Dir)...)
