@@ -13,6 +13,7 @@ Go library for parsing, validating, and writing
   and high-level material set output.
 * Validator supports configurable checks (shader/stage allowlists are optional).
 * Unknown fields are preserved internally and round-tripped.
+* Lint diagnostics registry [RULES.md](RULES.md).
 
 ## Install
 
@@ -29,7 +30,7 @@ if err != nil {
 }
 
 // Validate with defaults
-issues := rvmat.Validate(m, nil)
+diagnostics := rvmat.Validate(m, nil)
 
 // Render canonical output
 out, err := rvmat.Format(m, nil)
@@ -58,7 +59,7 @@ m.Stages = []rvmat.Stage{
   },
 }
 
-issues := rvmat.Validate(m, nil)
+diagnostics := rvmat.Validate(m, nil)
 out, err := rvmat.Format(m, nil)
 ```
 
@@ -139,7 +140,7 @@ raw := tex.Raw
 Validate a procedural texture:
 
 ```go
-issues := tex.Validate(&rvmat.TextureValidateOptions{
+diagnostics := tex.Validate(&rvmat.TextureValidateOptions{
   DisableProceduralFnCheck:   false,
   DisableProceduralArgsCheck: false,
   DisableTextureTagCheck:     false,
@@ -200,14 +201,14 @@ _, _, _ = resolved, uvSource, uvTransform
 material:
 
 ```go
-result, issues := rvmat.Normalize(m, &rvmat.NormalizeOptions{
+result, diagnostics := rvmat.Normalize(m, &rvmat.NormalizeOptions{
   StageTextures: true,
   StageOrder:    true,
   TexGenOrder:   true,
   TexturePaths:  true,
 })
 
-_, _ = result, issues
+_, _ = result, diagnostics
 ```
 
 ### Validate
@@ -217,15 +218,30 @@ extensions:
 
 ```go
 valOpt := &rvmat.ValidateOptions{
-  DisableFileCheck:       true,
+  TexturePathMode:        rvmat.TexturePathModeTrust,
   DisableExtensionsCheck: false,
   GameRoot:               "P:\\",
   DisableShaderNameCheck: true,
   ExcludePaths:           []string{`dz\vehicles\*`},
 }
 
-issues := rvmat.Validate(m, valOpt)
+diagnostics := rvmat.Validate(m, valOpt)
 ```
+
+Catalog API:
+
+```go
+all := rvmat.DiagnosticCatalog()
+spec, ok := rvmat.DiagnosticByCode(rvmat.CodeValidateTextureFileNotFound)
+_, _, _ = all, spec, ok
+```
+
+### lintkit Integration
+
+Lint diagnostics docs:
+
+* machine-readable snapshot: [rules.yaml](rules.yaml)
+* human-readable table: [RULES.md](RULES.md)
 
 ### Generate
 
