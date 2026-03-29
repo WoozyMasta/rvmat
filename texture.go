@@ -7,7 +7,6 @@ package rvmat
 import (
 	"fmt"
 	"path/filepath"
-	"slices"
 	"strconv"
 	"strings"
 )
@@ -193,13 +192,6 @@ func normalizeOSPath(p string) string {
 // textureExtensionsByPriority returns shared extension priority list.
 func textureExtensionsByPriority() []string {
 	return defaultTextureExtensions
-}
-
-// hasAllowedExt checks whether path uses one of default texture extensions.
-func hasAllowedExt(path string) bool {
-	ext := strings.ToLower(filepath.Ext(path))
-
-	return slices.Contains(defaultTextureExtensions, ext)
 }
 
 func parseProcedural(raw string) (*ProceduralTexture, bool) {

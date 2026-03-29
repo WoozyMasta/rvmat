@@ -342,6 +342,33 @@ func TestValidateTable(t *testing.T) {
 			wantWarn: 1,
 			wantErr:  0,
 		},
+		{
+			name: "extension_allowed_override",
+			mat: &Material{
+				PixelShaderID:  "Super",
+				VertexShaderID: "Super",
+				Stages: []Stage{
+					{
+						Name:     "Stage1",
+						Texture:  ParseTextureRef(`dz\gear\cooking\data\cauldron_nohq.jpg`),
+						UVSource: "tex",
+						UVTransform: &UVTransform{
+							Aside: []float64{1, 0, 0},
+							Up:    []float64{0, 1, 0},
+							Dir:   []float64{0, 0, 0},
+							Pos:   []float64{0, 0, 0},
+						},
+					},
+				},
+			},
+			opt: &ValidateOptions{
+				TexturePathMode:          TexturePathModeIgnore,
+				DisableExtensionsCheck:   false,
+				AllowedTextureExtensions: []string{".jpg", ".paa"},
+			},
+			wantWarn: 0,
+			wantErr:  0,
+		},
 	}
 
 	for _, tt := range tests {
@@ -675,6 +702,16 @@ func TestValidateTextureTable(t *testing.T) {
 				DisableTextureTagCheck: false,
 			},
 			wantWarn: 1,
+			wantErr:  0,
+		},
+		{
+			name: "unknown_tag_allowed_override",
+			tex:  ParseTextureRef(`#(argb,8,8,3)color(1,1,1,1,wat)`),
+			opt: &TextureValidateOptions{
+				DisableTextureTagCheck: false,
+				AllowedTextureTags:     []string{"co", "wat"},
+			},
+			wantWarn: 0,
 			wantErr:  0,
 		},
 		{

@@ -7,6 +7,7 @@ package rvmat
 import (
 	"errors"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/woozymasta/lintkit/lint"
@@ -23,9 +24,9 @@ const (
 // Issue represents a validation issue.
 type Issue struct {
 	Level   lint.Severity `json:"level" yaml:"level"`                   // Severity level
-	Code    lint.Code     `json:"code,omitempty" yaml:"code,omitempty"` // Machine-readable code
 	Message string        `json:"message" yaml:"message"`               // Issue message
 	Path    string        `json:"path,omitempty" yaml:"path,omitempty"` // Path to the affected resource
+	Code    lint.Code     `json:"code,omitempty" yaml:"code,omitempty"` // Machine-readable code
 }
 
 // issueWarning builds one warning issue.
@@ -111,6 +112,7 @@ func Validate(m *Material, opt *ValidateOptions) []Issue {
 
 	// Check if path-mode validation or extension validation is enabled.
 	if vopt.TexturePathMode != TexturePathModeIgnore || !vopt.DisableExtensionsCheck {
+		allowedExtensions := buildAllowedTextureExtensionSet(vopt.AllowedTextureExtensions)
 		resolver := PathResolver{GameRoot: vopt.GameRoot}
 		for _, st := range m.Stages {
 			tex := st.Texture
@@ -119,7 +121,7 @@ func Validate(m *Material, opt *ValidateOptions) []Issue {
 			}
 
 			if !vopt.DisableExtensionsCheck {
-				if !hasAllowedExt(tex.Raw) {
+				if !isAllowedTextureExtension(tex.Raw, allowedExtensions) {
 					out = append(out, issueWarning(
 						CodeValidateUnexpectedTextureExtension,
 						"unexpected texture extension",
@@ -551,6 +553,32 @@ func hasTrustedGameRootPrefix(path string, trustedPrefixes []string) bool {
 	return false
 }
 
+// buildAllowedTextureExtensionSet builds normalized extension allow-list set.
+func buildAllowedTextureExtensionSet(extensions []string) map[string]struct{} {
+	out := make(map[string]struct{}, len(extensions))
+
+	for index := range extensions {
+		extension := strings.ToLower(strings.TrimSpace(extensions[index]))
+		if extension == "" {
+			continue
+		}
+		if !strings.HasPrefix(extension, ".") {
+			extension = "." + extension
+		}
+
+		out[extension] = struct{}{}
+	}
+
+	return out
+}
+
+// isAllowedTextureExtension reports whether path extension is allowed.
+func isAllowedTextureExtension(path string, allowed map[string]struct{}) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	_, ok := allowed[ext]
+	return ok
+}
+
 // validateTexture validates a texture.
 func validateTexture(t TextureRef, opt TextureValidateOptions) []Issue {
 	if t.Raw == "" {
@@ -573,6 +601,7 @@ func validateTexture(t TextureRef, opt TextureValidateOptions) []Issue {
 
 	pt := t.Procedural
 	fn := strings.ToLower(pt.Func)
+	allowedTextureTags := buildAllowedTextureTagSet(opt.AllowedTextureTags)
 
 	var out []Issue
 	if !opt.DisableProceduralFnCheck {
@@ -628,7 +657,7 @@ func validateTexture(t TextureRef, opt TextureValidateOptions) []Issue {
 			tag = pt.Args[4]
 		}
 		if tag != "" {
-			if _, ok := knownTextureTags[strings.ToLower(tag)]; !ok {
+			if _, ok := allowedTextureTags[strings.ToLower(strings.TrimSpace(tag))]; !ok {
 				out = append(out, issueWarning(
 					CodeValidateUnknownTextureTag,
 					"unknown texture tag",
@@ -636,6 +665,29 @@ func validateTexture(t TextureRef, opt TextureValidateOptions) []Issue {
 				))
 			}
 		}
+	}
+
+	return out
+}
+
+// buildAllowedTextureTagSet returns normalized allowed texture-tag set.
+func buildAllowedTextureTagSet(tags []string) map[string]struct{} {
+	if len(tags) == 0 {
+		return knownTextureTags
+	}
+
+	out := make(map[string]struct{}, len(tags))
+	for index := range tags {
+		tag := strings.ToLower(strings.TrimSpace(tags[index]))
+		if tag == "" {
+			continue
+		}
+
+		out[tag] = struct{}{}
+	}
+
+	if len(out) == 0 {
+		return knownTextureTags
 	}
 
 	return out

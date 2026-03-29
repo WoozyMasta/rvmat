@@ -26,22 +26,22 @@ var diagnosticCatalog = []lint.CodeSpec{
 	lint.WarningCodeSpec(
 		CodeValidatePixelShaderMissing,
 		StageValidate,
-		"`PixelShaderID` is missing",
+		"pixel shader ID is missing",
 	),
 	lint.WarningCodeSpec(
 		CodeValidateVertexShaderMissing,
 		StageValidate,
-		"`VertexShaderID` is missing",
+		"vertex shader ID is missing",
 	),
 	lint.WarningCodeSpec(
 		CodeValidateUnknownPixelShaderID,
 		StageValidate,
-		"`PixelShaderID` is unknown",
+		"pixel shader ID is unknown",
 	),
 	lint.WarningCodeSpec(
 		CodeValidateUnknownVertexShaderID,
 		StageValidate,
-		"`VertexShaderID` is unknown",
+		"vertex shader ID is unknown",
 	),
 	withDescription(
 		lint.WarningCodeSpec(
@@ -51,6 +51,15 @@ var diagnosticCatalog = []lint.CodeSpec{
 		),
 		"Selected profile expects one or more required stages that are not "+
 			"present in material.",
+	),
+	withDescription(
+		lint.WarningCodeSpec(
+			CodeValidateShaderProfileMissingCommonStage,
+			StageValidate,
+			"shader profile is missing common stage",
+		),
+		"Selected profile usually includes this stage. Missing it can be valid, "+
+			"but often indicates incomplete material setup.",
 	),
 	withDescription(
 		lint.WarningCodeSpec(
@@ -69,7 +78,7 @@ var diagnosticCatalog = []lint.CodeSpec{
 		lint.WarningCodeSpec(
 			CodeValidateTexturePathParentTraversal,
 			StageValidate,
-			"`texture` path contains `..`",
+			"texture path contains parent traversal (`..`)",
 		),
 		"This may break packing rules and cross-platform path normalization.",
 	),
@@ -84,13 +93,13 @@ var diagnosticCatalog = []lint.CodeSpec{
 	lint.WarningCodeSpec(
 		CodeValidateUnknownStageName,
 		StageValidate,
-		"`stage` name is unknown",
+		"stage name is unknown",
 	),
 	withDescription(
 		lint.WarningCodeSpec(
 			CodeValidateStageUnknownTexGen,
 			StageValidate,
-			"`stage` references unknown `texGen` entry",
+			"stage references unknown texGen entry",
 		),
 		"Define referenced `texGen` entry or fix `texGen` reference in `stage`.",
 	),
@@ -98,7 +107,7 @@ var diagnosticCatalog = []lint.CodeSpec{
 		lint.WarningCodeSpec(
 			CodeValidateTexGenBaseNotFound,
 			StageValidate,
-			"`texGen` inheritance base entry was not found",
+			"texGen inheritance base entry was not found",
 		),
 		"Fix base name or define missing parent `texGen` entry.",
 	),
@@ -106,7 +115,7 @@ var diagnosticCatalog = []lint.CodeSpec{
 		lint.WarningCodeSpec(
 			CodeValidateTexGenCycle,
 			StageValidate,
-			"`texGen` inheritance cycle detected",
+			"texGen inheritance cycle detected",
 		),
 		"Remove recursive parent chain so effective `texGen` values can be "+
 			"resolved.",
@@ -115,7 +124,7 @@ var diagnosticCatalog = []lint.CodeSpec{
 		lint.WarningCodeSpec(
 			CodeValidateTexGenResolutionFailed,
 			StageValidate,
-			"`texGen` resolution failed",
+			"texGen resolution failed",
 		),
 		"Usually caused by invalid inheritance graph or malformed `texGen` "+
 			"data.",
@@ -124,7 +133,7 @@ var diagnosticCatalog = []lint.CodeSpec{
 		lint.WarningCodeSpec(
 			CodeValidateStageMissingEffectiveUVSource,
 			StageValidate,
-			"`stage` has no effective `uvSource`",
+			"stage has no effective uvSource",
 		),
 		"Define `uvSource` directly or via `texGen` chain.",
 	),
@@ -132,29 +141,29 @@ var diagnosticCatalog = []lint.CodeSpec{
 		lint.WarningCodeSpec(
 			CodeValidateStageMissingEffectiveUVTransform,
 			StageValidate,
-			"`stage` has no effective `uvTransform`",
+			"stage has no effective uvTransform",
 		),
 		"Provide transform values directly or via `texGen` chain.",
 	),
 	lint.ErrorCodeSpec(
 		CodeValidateDuplicateStageName,
 		StageValidate,
-		"duplicate `stage` name",
+		"duplicate stage name",
 	),
 	lint.ErrorCodeSpec(
 		CodeValidateColorComponentCount,
 		StageValidate,
-		"`color` must have 4 components",
+		"color vector must have 4 components",
 	),
 	lint.ErrorCodeSpec(
 		CodeValidateUVTransformVectorRequired,
 		StageValidate,
-		"`uvTransform` vector is required",
+		"uvTransform vector is required",
 	),
 	lint.ErrorCodeSpec(
 		CodeValidateUVTransformVectorComponentCount,
 		StageValidate,
-		"`uvTransform` vector must have 3 components",
+		"uvTransform vector must have 3 components",
 	),
 	withDescription(
 		lint.WarningCodeSpec(
