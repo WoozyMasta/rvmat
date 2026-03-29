@@ -59,10 +59,6 @@ type ValidateOptions struct {
 	// ExcludePaths skips file existence checks for matching texture paths.
 	// Supports exact match and prefix wildcard with '*' suffix (e.g. "dz\vehicles\*").
 	ExcludePaths []string `json:"exclude_paths,omitempty" yaml:"exclude_paths,omitempty"`
-	// AllowedTextureExtensions overrides allowed texture extension list for
-	// CodeValidateUnexpectedTextureExtension checks.
-	// Empty value uses built-in defaults: .paa, .pax, .tga, .png.
-	AllowedTextureExtensions []string `json:"allowed_texture_extensions,omitempty" yaml:"allowed_texture_extensions,omitempty"`
 	// DisableExtensionsCheck disables extension validation for texture paths.
 	DisableExtensionsCheck bool `json:"disable_extensions_check,omitempty" yaml:"disable_extensions_check,omitempty"`
 	// DisableShaderNameCheck disables validation of PixelShaderID, VertexShaderID, and Stage names
@@ -74,10 +70,6 @@ type ValidateOptions struct {
 
 // TextureValidateOptions controls validation of procedural textures.
 type TextureValidateOptions struct {
-	// AllowedTextureTags overrides allowed texture tags for color(...,tag)
-	// validation (RVMAT2028).
-	// Empty value uses built-in known tags from validate_lists.go.
-	AllowedTextureTags []string `json:"allowed_texture_tags,omitempty" yaml:"allowed_texture_tags,omitempty"`
 	// DisableProceduralFnCheck disables validation of procedural function names (color, fresnel, etc).
 	DisableProceduralFnCheck bool `json:"disable_procedural_fn_check,omitempty" yaml:"disable_procedural_fn_check,omitempty"`
 	// DisableProceduralArgsCheck disables argument count validation for known procedural functions.
@@ -156,9 +148,6 @@ func (o *ValidateOptions) normalize() ValidateOptions {
 	}
 	if len(out.TrustedPrefixes) == 0 {
 		out.TrustedPrefixes = slices.Clone(defaultTrustedPrefixes)
-	}
-	if len(out.AllowedTextureExtensions) == 0 {
-		out.AllowedTextureExtensions = slices.Clone(defaultTextureExtensions)
 	}
 
 	return out

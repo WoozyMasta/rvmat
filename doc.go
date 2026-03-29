@@ -26,11 +26,11 @@ Writer example:
 
 Validator example:
 
-	issues := rvmat.Validate(m, &rvmat.ValidateOptions{
+	diagnostics := rvmat.Validate(m, &rvmat.ValidateOptions{
 		TexturePathMode:          rvmat.TexturePathModeIgnore,
 		EnableShaderProfileCheck: true,
 	})
-	_ = issues
+	_ = diagnostics
 
 lintkit catalog example:
 
@@ -49,14 +49,14 @@ TexGen effective UV example:
 
 Normalization example:
 
-	result, normalizeIssues := rvmat.Normalize(m, &rvmat.NormalizeOptions{
+	result, normalizeDiagnostics := rvmat.Normalize(m, &rvmat.NormalizeOptions{
 		StageTextures: true,
 		StageOrder:    true,
 		TexGenOrder:   true,
 		TexturePaths:  true,
 	})
 	_ = result
-	_ = normalizeIssues
+	_ = normalizeDiagnostics
 
 High-level generator example:
 

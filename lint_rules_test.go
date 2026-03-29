@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/woozymasta/lintkit/lint"
+	"github.com/woozymasta/lintkit/linting"
 	"github.com/woozymasta/lintkit/linttest"
 )
 
@@ -157,24 +158,24 @@ func TestLintRuleRunnerCheck(t *testing.T) {
 	runContext := lint.RunContext{
 		TargetPath: "material.rvmat",
 	}
-	AttachLintDiagnostics(&runContext, []Issue{
+	AttachLintDiagnostics(&runContext, []lint.Diagnostic{
 		{
-			Code:    CodeValidateDuplicateStageName,
-			Level:   IssueError,
-			Message: "duplicate Stage name",
-			Path:    "Stage1",
+			Code:     mustRuleCode(t, CodeValidateDuplicateStageName),
+			Severity: lint.SeverityError,
+			Message:  "duplicate Stage name",
+			Path:     "Stage1",
 		},
 		{
-			Code:    CodeValidateDuplicateStageName,
-			Level:   IssueError,
-			Message: "duplicate Stage name",
-			Path:    "Stage2",
+			Code:     mustRuleCode(t, CodeValidateDuplicateStageName),
+			Severity: lint.SeverityError,
+			Message:  "duplicate Stage name",
+			Path:     "Stage2",
 		},
 		{
-			Code:    CodeValidateUnknownTextureTag,
-			Level:   IssueWarning,
-			Message: "unknown texture tag",
-			Path:    "co",
+			Code:     mustRuleCode(t, CodeValidateUnknownTextureTag),
+			Severity: lint.SeverityWarning,
+			Message:  "unknown texture tag",
+			Path:     "co",
 		},
 	})
 
@@ -201,6 +202,90 @@ func TestLintRuleRunnerCheck(t *testing.T) {
 	}
 }
 
+func TestLintRuleOptionsUnexpectedTextureExtension(t *testing.T) {
+	t.Parallel()
+
+	engine := linting.NewEngine()
+	if err := RegisterLintRules(engine); err != nil {
+		t.Fatalf("RegisterLintRules() error: %v", err)
+	}
+
+	runContext := lint.RunContext{
+		TargetPath: "material.rvmat",
+	}
+	AttachLintDiagnostics(&runContext, []lint.Diagnostic{
+		{
+			Code:     mustRuleCode(t, CodeValidateUnexpectedTextureExtension),
+			Severity: lint.SeverityWarning,
+			Message:  "unexpected texture extension",
+			Path:     `dz\gear\test\foo.jpg`,
+		},
+	})
+
+	policy := linting.RunPolicy{
+		Rules: map[string]linting.RuleSettings{
+			LintRuleID(CodeValidateUnexpectedTextureExtension): {
+				Options: UnexpectedTextureExtensionRuleOptions{
+					AllowedExtensions: []string{".jpg"},
+				},
+			},
+		},
+	}
+
+	result, err := engine.Run(context.Background(), runContext, &linting.RunOptions{
+		Policy: &policy,
+	})
+	if err != nil {
+		t.Fatalf("engine.Run() error: %v", err)
+	}
+
+	if len(result.Diagnostics) != 0 {
+		t.Fatalf("len(result.Diagnostics)=%d, want 0", len(result.Diagnostics))
+	}
+}
+
+func TestLintRuleOptionsUnknownTextureTag(t *testing.T) {
+	t.Parallel()
+
+	engine := linting.NewEngine()
+	if err := RegisterLintRules(engine); err != nil {
+		t.Fatalf("RegisterLintRules() error: %v", err)
+	}
+
+	runContext := lint.RunContext{
+		TargetPath: "material.rvmat",
+	}
+	AttachLintDiagnostics(&runContext, []lint.Diagnostic{
+		{
+			Code:     mustRuleCode(t, CodeValidateUnknownTextureTag),
+			Severity: lint.SeverityWarning,
+			Message:  "unknown texture tag",
+			Path:     "wat",
+		},
+	})
+
+	policy := linting.RunPolicy{
+		Rules: map[string]linting.RuleSettings{
+			LintRuleID(CodeValidateUnknownTextureTag): {
+				Options: UnknownTextureTagRuleOptions{
+					AllowedTags: []string{"wat"},
+				},
+			},
+		},
+	}
+
+	result, err := engine.Run(context.Background(), runContext, &linting.RunOptions{
+		Policy: &policy,
+	})
+	if err != nil {
+		t.Fatalf("engine.Run() error: %v", err)
+	}
+
+	if len(result.Diagnostics) != 0 {
+		t.Fatalf("len(result.Diagnostics)=%d, want 0", len(result.Diagnostics))
+	}
+}
+
 // findRunnerByRuleID returns runner by stable rule id.
 func findRunnerByRuleID(
 	runners []lint.RuleRunner,
@@ -213,4 +298,21 @@ func findRunnerByRuleID(
 	}
 
 	return nil, false
+}
+
+// mustRuleCode returns exported rule code token for one numeric code.
+func mustRuleCode(t *testing.T, code lint.Code) string {
+	t.Helper()
+
+	spec, ok := DiagnosticByCode(code)
+	if !ok {
+		t.Fatalf("missing diagnostic catalog entry for code %d", code)
+	}
+
+	ruleSpec, err := DiagnosticRuleSpec(spec)
+	if err != nil {
+		t.Fatalf("DiagnosticRuleSpec() error: %v", err)
+	}
+
+	return ruleSpec.Code
 }

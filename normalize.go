@@ -8,13 +8,15 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/woozymasta/lintkit/lint"
 )
 
 // Normalize applies safe normalization directly to material.
-func Normalize(m *Material, opt *NormalizeOptions) (NormalizeResult, []Issue) {
+func Normalize(m *Material, opt *NormalizeOptions) (NormalizeResult, []lint.Diagnostic) {
 	normalizeOptions := opt.normalize()
 	if m == nil {
-		return NormalizeResult{}, []Issue{issueError(
+		return NormalizeResult{}, []lint.Diagnostic{errorDiagnostic(
 			CodeNormalizeNilMaterial,
 			"normalize failed: material is nil",
 			"",
@@ -22,7 +24,7 @@ func Normalize(m *Material, opt *NormalizeOptions) (NormalizeResult, []Issue) {
 	}
 
 	var result NormalizeResult
-	var out []Issue
+	var out []lint.Diagnostic
 
 	if normalizeOptions.StageTextures {
 		fixed := fillMissingStageTexture(m)

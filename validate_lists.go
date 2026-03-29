@@ -4,6 +4,8 @@
 
 package rvmat
 
+import "sort"
+
 // Known pixel shader IDs observed in game data.
 var knownPixelShaderID = map[string]struct{}{
 	"TerrainX":                            {},
@@ -148,6 +150,17 @@ var knownTextureTags = map[string]struct{}{
 	"sky":       {},
 	"sm":        {},
 	"normalmap": {},
+}
+
+// orderedKnownTextureTags returns deterministic known texture-tag list.
+func orderedKnownTextureTags() []string {
+	out := make([]string, 0, len(knownTextureTags))
+	for tag := range knownTextureTags {
+		out = append(out, tag)
+	}
+
+	sort.Strings(out)
+	return out
 }
 
 // shaderProfileHint keeps soft stage hints for known pixel shader profiles.

@@ -4,7 +4,11 @@
 
 package rvmat
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/woozymasta/lintkit/lint"
+)
 
 func TestValidateIssuesHaveKnownCodes(t *testing.T) {
 	t.Parallel()
@@ -35,11 +39,16 @@ func TestValidateIssuesHaveKnownCodes(t *testing.T) {
 	}
 
 	for index := range issues {
-		if issues[index].Code == 0 {
+		if issues[index].Code == "" {
 			t.Fatalf("issues[%d] has empty code: %+v", index, issues[index])
 		}
 
-		if _, ok := DiagnosticByCode(issues[index].Code); !ok {
+		code, ok := lint.ParsePublicCode(issues[index].Code)
+		if !ok {
+			t.Fatalf("issues[%d] has invalid code %q", index, issues[index].Code)
+		}
+
+		if _, ok = DiagnosticByCode(code); !ok {
 			t.Fatalf("issues[%d] has unknown code %q", index, issues[index].Code)
 		}
 	}
@@ -50,15 +59,20 @@ func TestNormalizeIssuesHaveKnownCodes(t *testing.T) {
 
 	_, issues := Normalize(nil, nil)
 	if len(issues) == 0 {
-		t.Fatal("expected normalize issue for nil material")
+		t.Fatal("expected normalize lint.Diagnostic for nil material")
 	}
 
 	for index := range issues {
-		if issues[index].Code == 0 {
+		if issues[index].Code == "" {
 			t.Fatalf("issues[%d] has empty code: %+v", index, issues[index])
 		}
 
-		if _, ok := DiagnosticByCode(issues[index].Code); !ok {
+		code, ok := lint.ParsePublicCode(issues[index].Code)
+		if !ok {
+			t.Fatalf("issues[%d] has invalid code %q", index, issues[index].Code)
+		}
+
+		if _, ok = DiagnosticByCode(code); !ok {
 			t.Fatalf("issues[%d] has unknown code %q", index, issues[index].Code)
 		}
 	}

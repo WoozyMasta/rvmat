@@ -3,6 +3,8 @@ package rvmat
 import (
 	"reflect"
 	"testing"
+
+	"github.com/woozymasta/lintkit/lint"
 )
 
 func TestNormalizeNil(t *testing.T) {
@@ -14,8 +16,8 @@ func TestNormalizeNil(t *testing.T) {
 	if len(issues) != 1 {
 		t.Fatalf("unexpected issues count: %d (%v)", len(issues), issues)
 	}
-	if issues[0].Level != IssueError {
-		t.Fatalf("unexpected issue level: %v", issues[0])
+	if issues[0].Severity != lint.SeverityError {
+		t.Fatalf("unexpected diagnostic severity: %v", issues[0])
 	}
 }
 

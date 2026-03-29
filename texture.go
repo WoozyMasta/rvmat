@@ -7,8 +7,11 @@ package rvmat
 import (
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/woozymasta/lintkit/lint"
 )
 
 // TextureKind indicates texture reference type.
@@ -33,7 +36,7 @@ type TextureRef struct {
 }
 
 // Validate validates this texture reference.
-func (t TextureRef) Validate(opt *TextureValidateOptions) []Issue {
+func (t TextureRef) Validate(opt *TextureValidateOptions) []lint.Diagnostic {
 	vopt := opt.normalize()
 	return validateTexture(t, vopt)
 }
@@ -192,6 +195,13 @@ func normalizeOSPath(p string) string {
 // textureExtensionsByPriority returns shared extension priority list.
 func textureExtensionsByPriority() []string {
 	return defaultTextureExtensions
+}
+
+// hasAllowedExt checks whether path uses one of default texture extensions.
+func hasAllowedExt(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+
+	return slices.Contains(defaultTextureExtensions, ext)
 }
 
 func parseProcedural(raw string) (*ProceduralTexture, bool) {

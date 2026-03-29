@@ -5,6 +5,7 @@
 package rvmat
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/woozymasta/lintkit/lint"
@@ -46,7 +47,7 @@ func TestDiagnosticCatalogIntegrity(t *testing.T) {
 			t.Fatalf("DiagnosticByCode(%d) returned not found", spec.Code)
 		}
 
-		if lookup != spec {
+		if !reflect.DeepEqual(lookup, spec) {
 			t.Fatalf(
 				"DiagnosticByCode(%d) returned different spec: %+v != %+v",
 				spec.Code,

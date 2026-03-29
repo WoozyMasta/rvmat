@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/woozymasta/lintkit/lint"
 )
 
 func TestParseSamples(t *testing.T) {
@@ -342,33 +344,6 @@ func TestValidateTable(t *testing.T) {
 			wantWarn: 1,
 			wantErr:  0,
 		},
-		{
-			name: "extension_allowed_override",
-			mat: &Material{
-				PixelShaderID:  "Super",
-				VertexShaderID: "Super",
-				Stages: []Stage{
-					{
-						Name:     "Stage1",
-						Texture:  ParseTextureRef(`dz\gear\cooking\data\cauldron_nohq.jpg`),
-						UVSource: "tex",
-						UVTransform: &UVTransform{
-							Aside: []float64{1, 0, 0},
-							Up:    []float64{0, 1, 0},
-							Dir:   []float64{0, 0, 0},
-							Pos:   []float64{0, 0, 0},
-						},
-					},
-				},
-			},
-			opt: &ValidateOptions{
-				TexturePathMode:          TexturePathModeIgnore,
-				DisableExtensionsCheck:   false,
-				AllowedTextureExtensions: []string{".jpg", ".paa"},
-			},
-			wantWarn: 0,
-			wantErr:  0,
-		},
 	}
 
 	for _, tt := range tests {
@@ -376,10 +351,10 @@ func TestValidateTable(t *testing.T) {
 			issues := Validate(tt.mat, tt.opt)
 			var warns, errs int
 			for _, it := range issues {
-				switch it.Level {
-				case IssueWarning:
+				switch it.Severity {
+				case lint.SeverityWarning:
 					warns++
-				case IssueError:
+				case lint.SeverityError:
 					errs++
 				}
 			}
@@ -476,7 +451,7 @@ func TestValidateTexGenResolution(t *testing.T) {
 			var warns int
 			var hasMessage bool
 			for _, is := range issues {
-				if is.Level == IssueWarning {
+				if is.Severity == lint.SeverityWarning {
 					warns++
 				}
 				if tt.wantMessage != "" && is.Message == tt.wantMessage {
@@ -583,7 +558,7 @@ func TestValidateShaderProfiles(t *testing.T) {
 			issues := Validate(tt.mat, tt.opt)
 			var warns int
 			for _, it := range issues {
-				if it.Level == IssueWarning {
+				if it.Severity == lint.SeverityWarning {
 					warns++
 				}
 			}
@@ -644,8 +619,8 @@ func TestValidateUVTransformVectors(t *testing.T) {
 	})
 
 	var errs int
-	for _, issue := range issues {
-		if issue.Level == IssueError {
+	for _, diagnostic := range issues {
+		if diagnostic.Severity == lint.SeverityError {
 			errs++
 		}
 	}
@@ -705,16 +680,6 @@ func TestValidateTextureTable(t *testing.T) {
 			wantErr:  0,
 		},
 		{
-			name: "unknown_tag_allowed_override",
-			tex:  ParseTextureRef(`#(argb,8,8,3)color(1,1,1,1,wat)`),
-			opt: &TextureValidateOptions{
-				DisableTextureTagCheck: false,
-				AllowedTextureTags:     []string{"co", "wat"},
-			},
-			wantWarn: 0,
-			wantErr:  0,
-		},
-		{
 			name: "unknown_format",
 			tex:  ParseTextureRef(`#(rgba,8,8,3)color(1,1,1,1,co)`),
 			opt: &TextureValidateOptions{
@@ -758,10 +723,10 @@ func TestValidateTextureTable(t *testing.T) {
 			issues := tt.tex.Validate(tt.opt)
 			var warns, errs int
 			for _, it := range issues {
-				switch it.Level {
-				case IssueWarning:
+				switch it.Severity {
+				case lint.SeverityWarning:
 					warns++
-				case IssueError:
+				case lint.SeverityError:
 					errs++
 				}
 			}

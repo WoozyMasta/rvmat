@@ -69,10 +69,15 @@ var diagnosticCatalog = []lint.CodeSpec{
 		),
 		"Defined stage set does not match expected layout for selected profile.",
 	),
-	lint.WarningCodeSpec(
-		CodeValidateUnexpectedTextureExtension,
-		StageValidate,
-		"unexpected texture extension",
+	lint.WithCodeOptions(
+		lint.WarningCodeSpec(
+			CodeValidateUnexpectedTextureExtension,
+			StageValidate,
+			"unexpected texture extension",
+		),
+		UnexpectedTextureExtensionRuleOptions{
+			AllowedExtensions: defaultTextureExtensions,
+		},
 	),
 	withDescription(
 		lint.WarningCodeSpec(
@@ -202,10 +207,15 @@ var diagnosticCatalog = []lint.CodeSpec{
 		"procedural numeric argument values are invalid",
 	),
 	withDescription(
-		lint.WarningCodeSpec(
-			CodeValidateUnknownTextureTag,
-			StageValidate,
-			"unknown texture tag",
+		lint.WithCodeOptions(
+			lint.WarningCodeSpec(
+				CodeValidateUnknownTextureTag,
+				StageValidate,
+				"unknown texture tag",
+			),
+			UnknownTextureTagRuleOptions{
+				AllowedTags: orderedKnownTextureTags(),
+			},
 		),
 		"Use known engine tag prefix or absolute project-relative path.",
 	),

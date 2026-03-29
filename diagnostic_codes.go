@@ -112,17 +112,19 @@ const (
 	CodeValidateUnknownTextureTag lint.Code = 2028
 )
 
-var diagnosticCodeCatalogHandle = lint.NewCodeCatalogHandle(
-	lint.CodeCatalogConfig{
-		Module:            LintModule,
-		CodePrefix:        "RVMAT",
-		ModuleName:        "Real Virtuality Materials",
-		ModuleDescription: "Lint rules for .rvmat normalization and validation flows.",
-		ScopeDescriptions: map[lint.Stage]string{
-			StageValidate:  "Semantic validation diagnostics.",
-			StageNormalize: "Normalization diagnostics.",
-		},
+var diagnosticCodeCatalogConfig = lint.CodeCatalogConfig{
+	Module:            LintModule,
+	CodePrefix:        "RVMAT",
+	ModuleName:        "Real Virtuality Materials",
+	ModuleDescription: "Lint rules for .rvmat normalization and validation flows.",
+	ScopeDescriptions: map[lint.Stage]string{
+		StageValidate:  "Semantic validation diagnostics.",
+		StageNormalize: "Normalization diagnostics.",
 	},
+}
+
+var diagnosticCodeCatalogHandle = lint.NewCodeCatalogHandle(
+	diagnosticCodeCatalogConfig,
 	diagnosticCatalog,
 )
 
