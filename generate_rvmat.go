@@ -435,7 +435,7 @@ func withTexturePrefix(rawPath, prefix string) string {
 	if strings.TrimSpace(normalizedPath) == "" {
 		return normalizedPath
 	}
-	if hasKnownGameRootPrefix(normalizedPath) {
+	if hasTrustedGameRootPrefix(normalizedPath, defaultTrustedPrefixes) {
 		return normalizedPath
 	}
 
@@ -448,11 +448,6 @@ func withTexturePrefix(rawPath, prefix string) string {
 	}
 
 	return NormalizeGameTexturePath(normalizedPrefix + `\` + normalizedPath)
-}
-
-// hasKnownGameRootPrefix reports whether path already uses a known game root.
-func hasKnownGameRootPrefix(path string) bool {
-	return hasTrustedGameRootPrefix(path, defaultTrustedPrefixes)
 }
 
 // colorSuffixPriorityForMaterial returns base color suffix preference by material.
