@@ -27,7 +27,7 @@ Writer example:
 Validator example:
 
 	issues := rvmat.Validate(m, &rvmat.ValidateOptions{
-		DisableFileCheck:         true,
+		TexturePathMode:          rvmat.TexturePathModeIgnore,
 		EnableShaderProfileCheck: true,
 	})
 	_ = issues

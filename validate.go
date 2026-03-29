@@ -109,8 +109,8 @@ func Validate(m *Material, opt *ValidateOptions) []Issue {
 	out = append(out, validateColor("emissive", m.Emissive)...)
 	out = append(out, validateColor("specular", m.Specular)...)
 
-	// Check if file validation or extension validation is enabled
-	if !vopt.DisableFileCheck || !vopt.DisableExtensionsCheck {
+	// Check if path-mode validation or extension validation is enabled.
+	if vopt.TexturePathMode != TexturePathModeIgnore || !vopt.DisableExtensionsCheck {
 		resolver := PathResolver{GameRoot: vopt.GameRoot}
 		for _, st := range m.Stages {
 			tex := st.Texture
@@ -136,19 +136,27 @@ func Validate(m *Material, opt *ValidateOptions) []Issue {
 				))
 			}
 
-			if !vopt.DisableFileCheck {
-				if shouldExcludePath(tex.Raw, vopt.ExcludePaths) {
-					continue
-				}
-				p := resolver.ResolvePath(tex.Raw)
-				if p != "" {
-					if _, err := os.Stat(p); err != nil {
-						out = append(out, issueWarning(
-							CodeValidateTextureFileNotFound,
-							"texture file not found",
-							p,
-						))
-					}
+			if vopt.TexturePathMode == TexturePathModeIgnore {
+				continue
+			}
+
+			if shouldExcludePath(tex.Raw, vopt.ExcludePaths) {
+				continue
+			}
+
+			if vopt.TexturePathMode == TexturePathModeTrust &&
+				hasTrustedGameRootPrefix(tex.Raw, vopt.TrustedPrefixes) {
+				continue
+			}
+
+			p := resolver.ResolvePath(tex.Raw)
+			if p != "" {
+				if _, err := os.Stat(p); err != nil {
+					out = append(out, issueWarning(
+						CodeValidateTextureFileNotFound,
+						"texture file not found",
+						p,
+					))
 				}
 			}
 		}
@@ -519,6 +527,28 @@ func normalizePathForMatch(p string) string {
 	p = strings.TrimSpace(p)
 	p = strings.ReplaceAll(p, "/", "\\")
 	return strings.ToLower(p)
+}
+
+// hasTrustedGameRootPrefix reports whether path starts with trusted root prefix.
+func hasTrustedGameRootPrefix(path string, trustedPrefixes []string) bool {
+	normalizedPath := NormalizeGameTexturePath(path)
+	if normalizedPath == "" {
+		return false
+	}
+
+	for index := range trustedPrefixes {
+		prefix := strings.Trim(NormalizeGameTexturePath(trustedPrefixes[index]), `\`)
+		if prefix == "" {
+			continue
+		}
+
+		if normalizedPath == prefix ||
+			strings.HasPrefix(normalizedPath, prefix+`\`) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // validateTexture validates a texture.

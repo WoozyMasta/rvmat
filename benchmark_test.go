@@ -49,7 +49,7 @@ func BenchmarkParseValidateCorpus(b *testing.B) {
 			}
 
 			_ = Validate(m, &ValidateOptions{
-				DisableFileCheck: true,
+				TexturePathMode: TexturePathModeIgnore,
 			})
 		}
 	}

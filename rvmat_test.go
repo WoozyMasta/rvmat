@@ -122,9 +122,9 @@ func TestRoundTripMinimalMaterial(t *testing.T) {
 	}
 	vopt := &ValidateOptions{GameRoot: `P:\`}
 	if os.Getenv("CI") != "" {
-		vopt.DisableFileCheck = true
+		vopt.TexturePathMode = TexturePathModeIgnore
 	} else if !vopt.IsGameRootExist() {
-		vopt.DisableFileCheck = true
+		vopt.TexturePathMode = TexturePathModeIgnore
 	}
 	issues := Validate(got, vopt)
 	if len(issues) != 0 {
@@ -213,9 +213,9 @@ func TestRoundTripFullMaterial(t *testing.T) {
 	}
 	vopt := &ValidateOptions{GameRoot: `P:\`}
 	if os.Getenv("CI") != "" {
-		vopt.DisableFileCheck = true
+		vopt.TexturePathMode = TexturePathModeIgnore
 	} else if !vopt.IsGameRootExist() {
-		vopt.DisableFileCheck = true
+		vopt.TexturePathMode = TexturePathModeIgnore
 	}
 	issues := ValidateWithTextureOptions(got, vopt, &TextureValidateOptions{
 		DisableProceduralFnCheck:   false,
@@ -275,7 +275,7 @@ func TestValidateTable(t *testing.T) {
 					},
 				},
 			},
-			opt:      &ValidateOptions{DisableFileCheck: true},
+			opt:      &ValidateOptions{TexturePathMode: TexturePathModeIgnore},
 			wantWarn: 0,
 			wantErr:  0,
 		},
@@ -291,7 +291,7 @@ func TestValidateTable(t *testing.T) {
 					},
 				},
 			},
-			opt:      &ValidateOptions{DisableFileCheck: true, DisableShaderNameCheck: true},
+			opt:      &ValidateOptions{TexturePathMode: TexturePathModeIgnore, DisableShaderNameCheck: true},
 			wantWarn: 2,
 			wantErr:  0,
 		},
@@ -305,7 +305,7 @@ func TestValidateTable(t *testing.T) {
 					{Name: "Stage1"},
 				},
 			},
-			opt:      &ValidateOptions{DisableFileCheck: true, DisableShaderNameCheck: true},
+			opt:      &ValidateOptions{TexturePathMode: TexturePathModeIgnore, DisableShaderNameCheck: true},
 			wantWarn: 4,
 			wantErr:  1,
 		},
@@ -315,7 +315,7 @@ func TestValidateTable(t *testing.T) {
 				PixelShaderID:  "UnknownPS",
 				VertexShaderID: "UnknownVS",
 			},
-			opt:      &ValidateOptions{DisableFileCheck: true, DisableShaderNameCheck: false},
+			opt:      &ValidateOptions{TexturePathMode: TexturePathModeIgnore, DisableShaderNameCheck: false},
 			wantWarn: 2,
 			wantErr:  0,
 		},
@@ -338,7 +338,7 @@ func TestValidateTable(t *testing.T) {
 					},
 				},
 			},
-			opt:      &ValidateOptions{DisableFileCheck: true, DisableExtensionsCheck: false},
+			opt:      &ValidateOptions{TexturePathMode: TexturePathModeIgnore, DisableExtensionsCheck: false},
 			wantWarn: 1,
 			wantErr:  0,
 		},
@@ -442,7 +442,7 @@ func TestValidateTexGenResolution(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			issues := Validate(tt.mat, &ValidateOptions{
-				DisableFileCheck:       true,
+				TexturePathMode:        TexturePathModeIgnore,
 				DisableShaderNameCheck: true,
 			})
 
@@ -484,7 +484,7 @@ func TestValidateShaderProfiles(t *testing.T) {
 				},
 			},
 			opt: &ValidateOptions{
-				DisableFileCheck: true,
+				TexturePathMode: TexturePathModeIgnore,
 			},
 			wantWarn: 0,
 		},
@@ -498,7 +498,7 @@ func TestValidateShaderProfiles(t *testing.T) {
 				},
 			},
 			opt: &ValidateOptions{
-				DisableFileCheck:         true,
+				TexturePathMode:          TexturePathModeIgnore,
 				EnableShaderProfileCheck: true,
 			},
 			wantWarn: 6,
@@ -521,7 +521,7 @@ func TestValidateShaderProfiles(t *testing.T) {
 				}(),
 			},
 			opt: &ValidateOptions{
-				DisableFileCheck:         true,
+				TexturePathMode:          TexturePathModeIgnore,
 				EnableShaderProfileCheck: true,
 			},
 			wantWarn: 0,
@@ -544,7 +544,7 @@ func TestValidateShaderProfiles(t *testing.T) {
 				}(),
 			},
 			opt: &ValidateOptions{
-				DisableFileCheck:         true,
+				TexturePathMode:          TexturePathModeIgnore,
 				EnableShaderProfileCheck: true,
 			},
 			wantWarn: 1,
@@ -582,7 +582,7 @@ func TestValidateKnownNameChecksCaseInsensitive(t *testing.T) {
 	}
 
 	issues := Validate(mat, &ValidateOptions{
-		DisableFileCheck:       true,
+		TexturePathMode:        TexturePathModeIgnore,
 		DisableShaderNameCheck: false,
 	})
 
@@ -613,7 +613,7 @@ func TestValidateUVTransformVectors(t *testing.T) {
 	}
 
 	issues := Validate(mat, &ValidateOptions{
-		DisableFileCheck: true,
+		TexturePathMode: TexturePathModeIgnore,
 	})
 
 	var errs int

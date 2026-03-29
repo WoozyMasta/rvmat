@@ -452,13 +452,7 @@ func withTexturePrefix(rawPath, prefix string) string {
 
 // hasKnownGameRootPrefix reports whether path already uses a known game root.
 func hasKnownGameRootPrefix(path string) bool {
-	for _, root := range []string{`dz\`, `ca\`, `a3\`} {
-		if strings.HasPrefix(path, root) {
-			return true
-		}
-	}
-
-	return false
+	return hasTrustedGameRootPrefix(path, defaultTrustedPrefixes)
 }
 
 // colorSuffixPriorityForMaterial returns base color suffix preference by material.

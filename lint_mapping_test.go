@@ -25,7 +25,7 @@ func TestValidateIssuesHaveKnownCodes(t *testing.T) {
 	}
 
 	issues := Validate(material, &ValidateOptions{
-		DisableFileCheck:         true,
+		TexturePathMode:          TexturePathModeIgnore,
 		DisableExtensionsCheck:   false,
 		DisableShaderNameCheck:   false,
 		EnableShaderProfileCheck: true,

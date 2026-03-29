@@ -6,8 +6,25 @@ package rvmat
 
 import (
 	"os"
+	"slices"
 	"strings"
 )
+
+// TexturePathMode controls texture path existence behavior in validation.
+type TexturePathMode string
+
+const (
+	// TexturePathModeStrict validates texture file existence via filesystem.
+	TexturePathModeStrict TexturePathMode = "strict"
+
+	// TexturePathModeTrust trusts known game-root prefixes as existing.
+	TexturePathModeTrust TexturePathMode = "trust"
+
+	// TexturePathModeIgnore skips texture file existence validation.
+	TexturePathModeIgnore TexturePathMode = "ignore"
+)
+
+var defaultTrustedPrefixes = []string{`dz\`, `ca\`, `a3\`}
 
 // ParseOptions controls parsing behavior.
 type ParseOptions struct {
@@ -34,12 +51,14 @@ type ValidateOptions struct {
 	// GameRoot is used to resolve texture paths when file checks are enabled.
 	// For example, if GameRoot is "P:\\", and the texture path is "dz\vehicles\wheeled\offroad_02\data\offroad_02_roof_co.paa",
 	GameRoot string
+	// TexturePathMode controls file existence behavior (strict/trust/ignore).
+	TexturePathMode TexturePathMode
+	// TrustedPrefixes lists trusted game-root prefixes for trust mode.
+	// Empty value uses built-in defaults: dz\, ca\, a3\.
+	TrustedPrefixes []string
 	// ExcludePaths skips file existence checks for matching texture paths.
 	// Supports exact match and prefix wildcard with '*' suffix (e.g. "dz\vehicles\*").
 	ExcludePaths []string
-	// DisableFileCheck disables filesystem existence checks for texture paths.
-	// If game is not set, this is enabled by default.
-	DisableFileCheck bool
 	// DisableExtensionsCheck disables extension validation for texture paths.
 	DisableExtensionsCheck bool
 	// DisableShaderNameCheck disables validation of PixelShaderID, VertexShaderID, and Stage names
@@ -113,15 +132,35 @@ func (o *FormatOptions) normalize() FormatOptions {
 // normalize normalizes the ValidateOptions.
 func (o *ValidateOptions) normalize() ValidateOptions {
 	if o == nil {
-		return ValidateOptions{DisableFileCheck: true}
+		return ValidateOptions{
+			TexturePathMode: TexturePathModeIgnore,
+			TrustedPrefixes: slices.Clone(defaultTrustedPrefixes),
+		}
 	}
 
 	out := *o
-	if out.GameRoot == "" {
-		out.DisableFileCheck = true
+	if !isTexturePathModeValid(out.TexturePathMode) {
+		if out.GameRoot == "" {
+			out.TexturePathMode = TexturePathModeIgnore
+		} else {
+			out.TexturePathMode = TexturePathModeStrict
+		}
+	}
+	if len(out.TrustedPrefixes) == 0 {
+		out.TrustedPrefixes = slices.Clone(defaultTrustedPrefixes)
 	}
 
 	return out
+}
+
+// isTexturePathModeValid reports whether value is a supported path mode.
+func isTexturePathModeValid(value TexturePathMode) bool {
+	switch value {
+	case TexturePathModeStrict, TexturePathModeTrust, TexturePathModeIgnore:
+		return true
+	default:
+		return false
+	}
 }
 
 // normalize normalizes the TextureValidateOptions.
