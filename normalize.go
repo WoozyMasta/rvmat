@@ -14,7 +14,11 @@ import (
 func Normalize(m *Material, opt *NormalizeOptions) (NormalizeResult, []Issue) {
 	normalizeOptions := opt.normalize()
 	if m == nil {
-		return NormalizeResult{}, []Issue{{Level: IssueError, Message: "normalize failed: material is nil"}}
+		return NormalizeResult{}, []Issue{issueError(
+			CodeNormalizeNilMaterial,
+			"normalize failed: material is nil",
+			"",
+		)}
 	}
 
 	var result NormalizeResult

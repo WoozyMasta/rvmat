@@ -6,6 +6,9 @@
 Package rvmat provides parsing, writing, validation, normalization, and
 generation for Real Virtuality RVMAT material files.
 
+It also provides native lintkit integration with stable rule codes,
+catalog export, and provider-based rule registration.
+
 Reader example:
 
 	m, err := rvmat.DecodeFile("material.rvmat", nil)
@@ -28,6 +31,12 @@ Validator example:
 		EnableShaderProfileCheck: true,
 	})
 	_ = issues
+
+lintkit catalog example:
+
+	all := rvmat.DiagnosticCatalog()
+	spec, ok := rvmat.DiagnosticByCode(rvmat.CodeValidateTextureFileNotFound)
+	_, _, _ = all, spec, ok
 
 TexGen effective UV example:
 

@@ -8,24 +8,44 @@ import (
 	"errors"
 	"os"
 	"strings"
-)
 
-// IssueLevel represents severity of validation issue.
-type IssueLevel string
+	"github.com/woozymasta/lintkit/lint"
+)
 
 const (
 	// IssueError indicates a validation error.
-	IssueError IssueLevel = "error"
+	IssueError = lint.SeverityError
+
 	// IssueWarning indicates a validation warning.
-	IssueWarning IssueLevel = "warning"
+	IssueWarning = lint.SeverityWarning
 )
 
 // Issue represents a validation issue.
 type Issue struct {
-	Level   IssueLevel `json:"level" yaml:"level"`                   // Severity level
-	Code    string     `json:"code,omitempty" yaml:"code,omitempty"` // Machine-readable code
-	Message string     `json:"message" yaml:"message"`               // Issue message
-	Path    string     `json:"path,omitempty" yaml:"path,omitempty"` // Path to the affected resource
+	Level   lint.Severity `json:"level" yaml:"level"`                   // Severity level
+	Code    lint.Code     `json:"code,omitempty" yaml:"code,omitempty"` // Machine-readable code
+	Message string        `json:"message" yaml:"message"`               // Issue message
+	Path    string        `json:"path,omitempty" yaml:"path,omitempty"` // Path to the affected resource
+}
+
+// issueWarning builds one warning issue.
+func issueWarning(code lint.Code, message string, path string) Issue {
+	return Issue{
+		Level:   IssueWarning,
+		Code:    code,
+		Message: message,
+		Path:    path,
+	}
+}
+
+// issueError builds one error issue.
+func issueError(code lint.Code, message string, path string) Issue {
+	return Issue{
+		Level:   IssueError,
+		Code:    code,
+		Message: message,
+		Path:    path,
+	}
 }
 
 // Validate validates a material and returns issues.
@@ -35,22 +55,38 @@ func Validate(m *Material, opt *ValidateOptions) []Issue {
 
 	if len(m.Stages) > 0 {
 		if m.PixelShaderID == "" {
-			out = append(out, Issue{Level: IssueWarning, Message: "PixelShaderID missing"})
+			out = append(out, issueWarning(
+				CodeValidatePixelShaderMissing,
+				"PixelShaderID missing",
+				"",
+			))
 		}
 		if m.VertexShaderID == "" {
-			out = append(out, Issue{Level: IssueWarning, Message: "VertexShaderID missing"})
+			out = append(out, issueWarning(
+				CodeValidateVertexShaderMissing,
+				"VertexShaderID missing",
+				"",
+			))
 		}
 	}
 
 	if !vopt.DisableShaderNameCheck {
 		if m.PixelShaderID != "" {
 			if !isKnownNameCI(knownPixelShaderID, m.PixelShaderID) {
-				out = append(out, Issue{Level: IssueWarning, Message: "unknown PixelShaderID", Path: m.PixelShaderID})
+				out = append(out, issueWarning(
+					CodeValidateUnknownPixelShaderID,
+					"unknown PixelShaderID",
+					m.PixelShaderID,
+				))
 			}
 		}
 		if m.VertexShaderID != "" {
 			if !isKnownNameCI(knownVertexShaderID, m.VertexShaderID) {
-				out = append(out, Issue{Level: IssueWarning, Message: "unknown VertexShaderID", Path: m.VertexShaderID})
+				out = append(out, issueWarning(
+					CodeValidateUnknownVertexShaderID,
+					"unknown VertexShaderID",
+					m.VertexShaderID,
+				))
 			}
 		}
 	}
@@ -84,12 +120,20 @@ func Validate(m *Material, opt *ValidateOptions) []Issue {
 
 			if !vopt.DisableExtensionsCheck {
 				if !hasAllowedExt(tex.Raw) {
-					out = append(out, Issue{Level: IssueWarning, Message: "unexpected texture extension", Path: tex.Raw})
+					out = append(out, issueWarning(
+						CodeValidateUnexpectedTextureExtension,
+						"unexpected texture extension",
+						tex.Raw,
+					))
 				}
 			}
 
 			if strings.Contains(tex.Raw, "..") {
-				out = append(out, Issue{Level: IssueWarning, Message: "texture path contains '..'", Path: tex.Raw})
+				out = append(out, issueWarning(
+					CodeValidateTexturePathParentTraversal,
+					"texture path contains '..'",
+					tex.Raw,
+				))
 			}
 
 			if !vopt.DisableFileCheck {
@@ -99,7 +143,11 @@ func Validate(m *Material, opt *ValidateOptions) []Issue {
 				p := resolver.ResolvePath(tex.Raw)
 				if p != "" {
 					if _, err := os.Stat(p); err != nil {
-						out = append(out, Issue{Level: IssueWarning, Code: "missing_resource", Message: "texture file not found", Path: p})
+						out = append(out, issueWarning(
+							CodeValidateTextureFileNotFound,
+							"texture file not found",
+							p,
+						))
 					}
 				}
 			}
@@ -109,7 +157,11 @@ func Validate(m *Material, opt *ValidateOptions) []Issue {
 	for _, st := range m.Stages {
 		if !vopt.DisableShaderNameCheck {
 			if !isKnownNameCI(knownStageNames, st.Name) {
-				out = append(out, Issue{Level: IssueWarning, Message: "unknown Stage name", Path: st.Name})
+				out = append(out, issueWarning(
+					CodeValidateUnknownStageName,
+					"unknown Stage name",
+					st.Name,
+				))
 			}
 		}
 
@@ -125,32 +177,32 @@ func Validate(m *Material, opt *ValidateOptions) []Issue {
 			if err != nil {
 				switch {
 				case errors.Is(err, ErrTexGenNotFound):
-					out = append(out, Issue{
-						Level:   IssueWarning,
-						Message: "stage references unknown texGen",
-						Path:    st.Name,
-					})
+					out = append(out, issueWarning(
+						CodeValidateStageUnknownTexGen,
+						"stage references unknown texGen",
+						st.Name,
+					))
 
 				case errors.Is(err, ErrTexGenBaseNotFound):
-					out = append(out, Issue{
-						Level:   IssueWarning,
-						Message: "texGen inheritance base not found",
-						Path:    st.Name,
-					})
+					out = append(out, issueWarning(
+						CodeValidateTexGenBaseNotFound,
+						"texGen inheritance base not found",
+						st.Name,
+					))
 
 				case errors.Is(err, ErrTexGenCycle):
-					out = append(out, Issue{
-						Level:   IssueWarning,
-						Message: "texGen inheritance cycle detected",
-						Path:    st.Name,
-					})
+					out = append(out, issueWarning(
+						CodeValidateTexGenCycle,
+						"texGen inheritance cycle detected",
+						st.Name,
+					))
 
 				default:
-					out = append(out, Issue{
-						Level:   IssueWarning,
-						Message: "texGen resolution failed",
-						Path:    st.Name,
-					})
+					out = append(out, issueWarning(
+						CodeValidateTexGenResolutionFailed,
+						"texGen resolution failed",
+						st.Name,
+					))
 				}
 
 				continue
@@ -173,13 +225,25 @@ func Validate(m *Material, opt *ValidateOptions) []Issue {
 
 		// Check if effective uvSource/uvTransform are missing.
 		if uvSource == "" && uvTransform == nil {
-			out = append(out, Issue{Level: IssueWarning, Message: "stage missing effective uvSource", Path: st.Name})
-			out = append(out, Issue{Level: IssueWarning, Message: "stage missing effective uvTransform", Path: st.Name})
+			out = append(out, issueWarning(
+				CodeValidateStageMissingEffectiveUVSource,
+				"stage missing effective uvSource",
+				st.Name,
+			))
+			out = append(out, issueWarning(
+				CodeValidateStageMissingEffectiveUVTransform,
+				"stage missing effective uvTransform",
+				st.Name,
+			))
 			continue
 		}
 
 		if uvTransform == nil {
-			out = append(out, Issue{Level: IssueWarning, Message: "stage missing effective uvTransform", Path: st.Name})
+			out = append(out, issueWarning(
+				CodeValidateStageMissingEffectiveUVTransform,
+				"stage missing effective uvTransform",
+				st.Name,
+			))
 		}
 	}
 
@@ -189,7 +253,11 @@ func Validate(m *Material, opt *ValidateOptions) []Issue {
 			continue
 		}
 		if _, ok := seen[st.Name]; ok {
-			out = append(out, Issue{Level: IssueError, Message: "duplicate Stage name", Path: st.Name})
+			out = append(out, issueError(
+				CodeValidateDuplicateStageName,
+				"duplicate Stage name",
+				st.Name,
+			))
 			continue
 		}
 		seen[st.Name] = struct{}{}
@@ -241,11 +309,11 @@ func validateShaderProfiles(m *Material) []Issue {
 			continue
 		}
 		hasMissingProfileStages = true
-		out = append(out, Issue{
-			Level:   IssueWarning,
-			Message: "shader profile missing required stage",
-			Path:    stage,
-		})
+		out = append(out, issueWarning(
+			CodeValidateShaderProfileMissingRequiredStage,
+			"shader profile missing required stage",
+			stage,
+		))
 	}
 
 	for _, stage := range profile.Recommended {
@@ -253,11 +321,11 @@ func validateShaderProfiles(m *Material) []Issue {
 			continue
 		}
 		hasMissingProfileStages = true
-		out = append(out, Issue{
-			Level:   IssueWarning,
-			Message: "shader profile missing common stage",
-			Path:    stage,
-		})
+		out = append(out, issueWarning(
+			CodeValidateShaderProfileMissingCommonStage,
+			"shader profile missing common stage",
+			stage,
+		))
 	}
 
 	if !hasMissingProfileStages {
@@ -308,7 +376,11 @@ func validateExpectedStageSet(seen map[string]struct{}, required, optional []str
 
 	for stage := range requiredSet {
 		if _, ok := seen[stage]; !ok {
-			return []Issue{{Level: IssueWarning, Message: message}}
+			return []Issue{issueWarning(
+				CodeValidateShaderProfileStageSetMismatch,
+				message,
+				"",
+			)}
 		}
 	}
 
@@ -320,7 +392,11 @@ func validateExpectedStageSet(seen map[string]struct{}, required, optional []str
 			continue
 		}
 		if strings.HasPrefix(stage, "stage") {
-			return []Issue{{Level: IssueWarning, Message: message}}
+			return []Issue{issueWarning(
+				CodeValidateShaderProfileStageSetMismatch,
+				message,
+				"",
+			)}
 		}
 	}
 
@@ -355,7 +431,11 @@ func validateColor(name string, vals []float64) []Issue {
 		return nil
 	}
 	if len(vals) != 4 {
-		return []Issue{{Level: IssueError, Message: "color must have 4 components", Path: name}}
+		return []Issue{issueError(
+			CodeValidateColorComponentCount,
+			"color must have 4 components",
+			name,
+		)}
 	}
 	return nil
 }
@@ -383,19 +463,19 @@ func validateUVTransformVector(path, field string, values []float64) []Issue {
 	}
 
 	if len(values) == 0 {
-		return []Issue{{
-			Level:   IssueError,
-			Message: "uvTransform vector is required",
-			Path:    vectorPath,
-		}}
+		return []Issue{issueError(
+			CodeValidateUVTransformVectorRequired,
+			"uvTransform vector is required",
+			vectorPath,
+		)}
 	}
 
 	if len(values) != 3 {
-		return []Issue{{
-			Level:   IssueError,
-			Message: "uvTransform vector must have 3 components",
-			Path:    vectorPath,
-		}}
+		return []Issue{issueError(
+			CodeValidateUVTransformVectorComponentCount,
+			"uvTransform vector must have 3 components",
+			vectorPath,
+		)}
 	}
 
 	return nil
@@ -452,7 +532,11 @@ func validateTexture(t TextureRef, opt TextureValidateOptions) []Issue {
 
 	if !t.ParsedOK || t.Procedural == nil {
 		if !opt.DisableProceduralFnCheck || !opt.DisableProceduralArgsCheck || !opt.DisableTextureTagCheck {
-			return []Issue{{Level: IssueWarning, Message: "procedural texture parse failed", Path: t.Raw}}
+			return []Issue{issueWarning(
+				CodeValidateProceduralTextureParseFailed,
+				"procedural texture parse failed",
+				t.Raw,
+			)}
 		}
 		return nil
 	}
@@ -463,26 +547,46 @@ func validateTexture(t TextureRef, opt TextureValidateOptions) []Issue {
 	var out []Issue
 	if !opt.DisableProceduralFnCheck {
 		if _, ok := knownProceduralFns[fn]; !ok {
-			out = append(out, Issue{Level: IssueWarning, Message: "unknown procedural function", Path: pt.Func})
+			out = append(out, issueWarning(
+				CodeValidateUnknownProceduralFunction,
+				"unknown procedural function",
+				pt.Func,
+			))
 		}
 	}
 
 	if !opt.DisableProceduralFnCheck {
 		if _, ok := knownProceduralFormats[strings.ToLower(strings.TrimSpace(pt.Format))]; !ok {
-			out = append(out, Issue{Level: IssueWarning, Message: "unknown procedural texture format", Path: pt.Format})
+			out = append(out, issueWarning(
+				CodeValidateUnknownProceduralTextureFormat,
+				"unknown procedural texture format",
+				pt.Format,
+			))
 		}
 	}
 
 	if pt.Width <= 0 || pt.Height <= 0 || pt.Mip < 0 {
-		out = append(out, Issue{Level: IssueWarning, Message: "invalid procedural texture header dimensions", Path: t.Raw})
+		out = append(out, issueWarning(
+			CodeValidateInvalidProceduralTextureHeaderDimensions,
+			"invalid procedural texture header dimensions",
+			t.Raw,
+		))
 	}
 
 	if !opt.DisableProceduralArgsCheck {
 		if !proceduralArgsOK(fn, pt.Args) {
-			out = append(out, Issue{Level: IssueWarning, Message: "unexpected procedural argument count", Path: pt.Func})
+			out = append(out, issueWarning(
+				CodeValidateUnexpectedProceduralArgumentCount,
+				"unexpected procedural argument count",
+				pt.Func,
+			))
 		}
 		if !proceduralNumericArgsOK(fn, pt, pt.Args) {
-			out = append(out, Issue{Level: IssueWarning, Message: "invalid procedural numeric arguments", Path: pt.Func})
+			out = append(out, issueWarning(
+				CodeValidateInvalidProceduralNumericArguments,
+				"invalid procedural numeric arguments",
+				pt.Func,
+			))
 		}
 	}
 
@@ -495,7 +599,11 @@ func validateTexture(t TextureRef, opt TextureValidateOptions) []Issue {
 		}
 		if tag != "" {
 			if _, ok := knownTextureTags[strings.ToLower(tag)]; !ok {
-				out = append(out, Issue{Level: IssueWarning, Message: "unknown texture tag", Path: tag})
+				out = append(out, issueWarning(
+					CodeValidateUnknownTextureTag,
+					"unknown texture tag",
+					tag,
+				))
 			}
 		}
 	}

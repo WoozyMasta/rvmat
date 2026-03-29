@@ -4,7 +4,11 @@
 
 package rvmat
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/woozymasta/lintkit/lint"
+)
 
 var (
 	// ErrBinaryRVMAT indicates the file is not a text RVMAT (likely binary surface data).
@@ -36,4 +40,7 @@ var (
 
 	// ErrStageNotFound indicates required stage is missing.
 	ErrStageNotFound = errors.New("stage not found")
+
+	// ErrNilLintRuleRegistrar indicates nil lint rule registrar in registration.
+	ErrNilLintRuleRegistrar = lint.ErrNilRuleRegistrar
 )
