@@ -1,0 +1,265 @@
+modules:
+  - id: rvmat
+    name: Real Virtuality Materials
+    description: Lint rules for .rvmat normalization and validation flows.
+rules:
+  - id: rvmat.normalize.normalization-failed-material-input-is-nil
+    module: rvmat
+    scope: normalize
+    scope_description: Normalization diagnostics.
+    code: RVMAT1001
+    message: 'normalization failed: material input is nil'
+    description: Ensure parsed material object is created before normalization or validation.
+    default_severity: error
+  - id: rvmat.validate.pixel-shader-id-is-missing
+    module: rvmat
+    scope: validate
+    scope_description: Semantic validation diagnostics.
+    code: RVMAT2001
+    message: pixel shader ID is missing
+    default_severity: warning
+  - id: rvmat.validate.vertex-shader-id-is-missing
+    module: rvmat
+    scope: validate
+    scope_description: Semantic validation diagnostics.
+    code: RVMAT2002
+    message: vertex shader ID is missing
+    default_severity: warning
+  - id: rvmat.validate.pixel-shader-id-is-unknown
+    module: rvmat
+    scope: validate
+    scope_description: Semantic validation diagnostics.
+    code: RVMAT2003
+    message: pixel shader ID is unknown
+    default_severity: warning
+  - id: rvmat.validate.vertex-shader-id-is-unknown
+    module: rvmat
+    scope: validate
+    scope_description: Semantic validation diagnostics.
+    code: RVMAT2004
+    message: vertex shader ID is unknown
+    default_severity: warning
+  - id: rvmat.validate.shader-profile-is-missing-required-stage
+    module: rvmat
+    scope: validate
+    scope_description: Semantic validation diagnostics.
+    code: RVMAT2005
+    message: shader profile is missing required stage
+    description: Selected profile expects one or more required stages that are not present in material.
+    default_severity: warning
+  - id: rvmat.validate.shader-profile-is-missing-common-stage
+    module: rvmat
+    scope: validate
+    scope_description: Semantic validation diagnostics.
+    code: RVMAT2006
+    message: shader profile is missing common stage
+    description: Selected profile usually includes this stage. Missing it can be valid, but often indicates incomplete material setup.
+    default_severity: warning
+  - id: rvmat.validate.shader-profile-stage-set-mismatch
+    module: rvmat
+    scope: validate
+    scope_description: Semantic validation diagnostics.
+    code: RVMAT2007
+    message: shader profile stage set mismatch
+    description: Defined stage set does not match expected layout for selected profile.
+    default_severity: warning
+  - id: rvmat.validate.unexpected-texture-extension
+    module: rvmat
+    scope: validate
+    scope_description: Semantic validation diagnostics.
+    code: RVMAT2008
+    message: unexpected texture extension
+    default_severity: warning
+    default_options:
+      allowed_extensions:
+        - .paa
+        - .pax
+        - .tga
+        - .png
+  - id: rvmat.validate.texture-path-contains-parent-traversal
+    module: rvmat
+    scope: validate
+    scope_description: Semantic validation diagnostics.
+    code: RVMAT2009
+    message: texture path contains parent traversal (`..`)
+    description: This may break packing rules and cross-platform path normalization.
+    default_severity: warning
+  - id: rvmat.validate.texture-file-not-found
+    module: rvmat
+    scope: validate
+    scope_description: Semantic validation diagnostics.
+    code: RVMAT2010
+    message: texture file not found
+    description: Verify file exists and path mapping is correct for current search roots.
+    default_severity: warning
+  - id: rvmat.validate.stage-name-is-unknown
+    module: rvmat
+    scope: validate
+    scope_description: Semantic validation diagnostics.
+    code: RVMAT2011
+    message: stage name is unknown
+    default_severity: warning
+  - id: rvmat.validate.stage-references-unknown-texgen-entry
+    module: rvmat
+    scope: validate
+    scope_description: Semantic validation diagnostics.
+    code: RVMAT2012
+    message: stage references unknown texGen entry
+    description: Define referenced `texGen` entry or fix `texGen` reference in `stage`.
+    default_severity: warning
+  - id: rvmat.validate.texgen-inheritance-base-entry-was-not-found
+    module: rvmat
+    scope: validate
+    scope_description: Semantic validation diagnostics.
+    code: RVMAT2013
+    message: texGen inheritance base entry was not found
+    description: Fix base name or define missing parent `texGen` entry.
+    default_severity: warning
+  - id: rvmat.validate.texgen-inheritance-cycle-detected
+    module: rvmat
+    scope: validate
+    scope_description: Semantic validation diagnostics.
+    code: RVMAT2014
+    message: texGen inheritance cycle detected
+    description: Remove recursive parent chain so effective `texGen` values can be resolved.
+    default_severity: warning
+  - id: rvmat.validate.texgen-resolution-failed
+    module: rvmat
+    scope: validate
+    scope_description: Semantic validation diagnostics.
+    code: RVMAT2015
+    message: texGen resolution failed
+    description: Usually caused by invalid inheritance graph or malformed `texGen` data.
+    default_severity: warning
+  - id: rvmat.validate.stage-has-no-effective-uvsource
+    module: rvmat
+    scope: validate
+    scope_description: Semantic validation diagnostics.
+    code: RVMAT2016
+    message: stage has no effective uvSource
+    description: Define `uvSource` directly or via `texGen` chain.
+    default_severity: warning
+  - id: rvmat.validate.stage-has-no-effective-uvtransform
+    module: rvmat
+    scope: validate
+    scope_description: Semantic validation diagnostics.
+    code: RVMAT2017
+    message: stage has no effective uvTransform
+    description: Provide transform values directly or via `texGen` chain.
+    default_severity: warning
+  - id: rvmat.validate.duplicate-stage-name
+    module: rvmat
+    scope: validate
+    scope_description: Semantic validation diagnostics.
+    code: RVMAT2018
+    message: duplicate stage name
+    default_severity: error
+  - id: rvmat.validate.color-vector-must-have-4-components
+    module: rvmat
+    scope: validate
+    scope_description: Semantic validation diagnostics.
+    code: RVMAT2019
+    message: color vector must have 4 components
+    default_severity: error
+  - id: rvmat.validate.uvtransform-vector-is-required
+    module: rvmat
+    scope: validate
+    scope_description: Semantic validation diagnostics.
+    code: RVMAT2020
+    message: uvTransform vector is required
+    default_severity: error
+  - id: rvmat.validate.uvtransform-vector-must-have-3-components
+    module: rvmat
+    scope: validate
+    scope_description: Semantic validation diagnostics.
+    code: RVMAT2021
+    message: uvTransform vector must have 3 components
+    default_severity: error
+  - id: rvmat.validate.failed-to-parse-procedural-texture-header
+    module: rvmat
+    scope: validate
+    scope_description: Semantic validation diagnostics.
+    code: RVMAT2022
+    message: failed to parse procedural texture header
+    description: Verify syntax and argument format of procedural texture header.
+    default_severity: warning
+  - id: rvmat.validate.unknown-procedural-function
+    module: rvmat
+    scope: validate
+    scope_description: Semantic validation diagnostics.
+    code: RVMAT2023
+    message: unknown procedural function
+    default_severity: warning
+  - id: rvmat.validate.unknown-procedural-texture-format
+    module: rvmat
+    scope: validate
+    scope_description: Semantic validation diagnostics.
+    code: RVMAT2024
+    message: unknown procedural texture format
+    default_severity: warning
+  - id: rvmat.validate.invalid-procedural-texture-header-dimensions
+    module: rvmat
+    scope: validate
+    scope_description: Semantic validation diagnostics.
+    code: RVMAT2025
+    message: invalid procedural texture header dimensions
+    description: Width and height must be valid positive values.
+    default_severity: warning
+  - id: rvmat.validate.procedural-argument-count-is-unexpected
+    module: rvmat
+    scope: validate
+    scope_description: Semantic validation diagnostics.
+    code: RVMAT2026
+    message: procedural argument count is unexpected
+    default_severity: warning
+  - id: rvmat.validate.procedural-numeric-argument-values-are-invalid
+    module: rvmat
+    scope: validate
+    scope_description: Semantic validation diagnostics.
+    code: RVMAT2027
+    message: procedural numeric argument values are invalid
+    default_severity: warning
+  - id: rvmat.validate.unknown-texture-tag
+    module: rvmat
+    scope: validate
+    scope_description: Semantic validation diagnostics.
+    code: RVMAT2028
+    message: unknown texture tag
+    description: Use known engine tag prefix or absolute project-relative path.
+    default_severity: warning
+    default_options:
+      allowed_tags:
+        - ads
+        - adshq
+        - as
+        - ca
+        - cat
+        - cdt
+        - co
+        - draftlco
+        - dt
+        - dtsmdi
+        - gs
+        - lca
+        - lco
+        - mask
+        - mc
+        - mca
+        - mco
+        - "no"
+        - noex
+        - nof
+        - nofex
+        - nofhq
+        - nohq
+        - non
+        - nopx
+        - normalmap
+        - novhq
+        - nsex
+        - nshq
+        - pr
+        - raw
+        - sky
+        - sm
+        - smdi
