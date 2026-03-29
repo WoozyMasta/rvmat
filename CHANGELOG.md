@@ -13,6 +13,32 @@ and this project adheres to [Semantic Versioning][].
 ### Removed
 -->
 
+## [0.4.0][] - 2026-03-29
+
+### Added
+
+* Native `lintkit` integration with catalog-based rule registration
+  and configurable rule options (texture extensions, procedural texture tags).
+* Texture path validation modes: `strict`, `trust`, `ignore`
+  with trusted game-root prefixes.
+
+### Changed
+
+* Validation/normalization/procedural texture diagnostics moved to
+  `[]lint.Diagnostic` with stable public rule codes.
+* `ValidateOptions` replaced legacy file-check switch with
+  `TexturePathMode` + `TrustedPrefixes` behavior.
+* Texture path handling in generation/validation was unified
+  around trusted game-root prefix logic.
+
+### Removed
+
+* Legacy `Issue` diagnostics contract
+  from public validation/normalization APIs.
+* Legacy `DisableFileCheck` path-validation toggle in `ValidateOptions`.
+
+[0.4.0]: https://github.com/WoozyMasta/rvmat/compare/v0.3.1...v0.4.0
+
 ## [0.3.1][] - 2026-03-08
 
 ### Added
